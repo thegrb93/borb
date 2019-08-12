@@ -16,12 +16,13 @@ function world:initialize()
 end
 
 function world:draw()
+    self.dt = love.timer.getDelta()
     self.camera:push()
     for i, v in ipairs(self.ents) do
         v:draw()
     end
     self.camera:pop()
-    self.physworld:update(love.timer.getDelta())
+    self.physworld:update(self.dt)
 end
 
 function halfpipe:initialize()
@@ -48,6 +49,8 @@ function halfpipe:draw()
 end
 
 ball.graphic = love.graphics.newImage( "borb.png" )
+ball.feather = love.graphics.newImage( "feather.png" )
+ball.featherscale = 0.5/ball.feather:getWidth()
 ball.graphicw = ball.graphic:getWidth()*0.5
 ball.graphich = ball.graphic:getHeight()*0.5
 
@@ -60,11 +63,24 @@ function ball:initialize(x, y, radius)
     self.fixture = love.physics.newFixture(self.body, self.shape, 1)
     self.fixture:setFriction(10)
     self.fixture:setRestitution(1)
+
+    self.particles = love.graphics.newParticleSystem(ball.feather, 100)
+    self.particles:setParticleLifetime(2, 5)
+    self.particles:setSizeVariation(1)
+    self.particles:setSpin(-3, 3)
+    self.particles:setRotation( -math.pi, math.pi )
+    self.particles:setColors(1, 1, 1, 1, 1, 1, 1, 0)
 end
 
 function ball:draw()
     local x, y = self.body:getWorldCenter()
+    local dx, dy = self.body:getLinearVelocity()
     love.graphics.draw(ball.graphic, x, y, self.body:getAngle(), self.radius/ball.graphicw, self.radius/ball.graphich, ball.graphicw, ball.graphich)
+    
+    self.particles:setLinearAcceleration(-20+dx, -20+dy, 20+dx, 20+dy)
+    self.particles:emit(1)
+    self.particles:update(myworld.dt)
+    love.graphics.draw(self.particles, x, y, 0, ball.featherscale, ball.featherscale)
     
     if love.mouse.isDown(1) then
         local mpos = love.graphics.inverseTransformPoint(love.mouse.getPosition())
