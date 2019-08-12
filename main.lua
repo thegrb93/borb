@@ -65,10 +65,12 @@ function ball:initialize(x, y, radius)
     self.fixture:setRestitution(1)
 
     self.particles = love.graphics.newParticleSystem(ball.feather, 100)
+    self.particles:setLinearDamping(0.5, 0.5)
     self.particles:setParticleLifetime(2, 5)
     self.particles:setSizeVariation(1)
+    self.particles:setSizes(0.005, 0.005)
     self.particles:setSpin(-3, 3)
-    self.particles:setRotation( -math.pi, math.pi )
+    self.particles:setRotation(-math.pi, math.pi)
     self.particles:setColors(1, 1, 1, 1, 1, 1, 1, 0)
 end
 
@@ -77,10 +79,11 @@ function ball:draw()
     local dx, dy = self.body:getLinearVelocity()
     love.graphics.draw(ball.graphic, x, y, self.body:getAngle(), self.radius/ball.graphicw, self.radius/ball.graphich, ball.graphicw, ball.graphich)
     
-    self.particles:setLinearAcceleration(-20+dx, -20+dy, 20+dx, 20+dy)
+    self.particles:setLinearAcceleration(0, 0, 0, -10)
+    self.particles:setPosition(x, y)
     self.particles:emit(1)
     self.particles:update(myworld.dt)
-    love.graphics.draw(self.particles, x, y, 0, ball.featherscale, ball.featherscale)
+    love.graphics.draw(self.particles)
     
     if love.mouse.isDown(1) then
         local mpos = love.graphics.inverseTransformPoint(love.mouse.getPosition())
