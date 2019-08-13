@@ -77,7 +77,7 @@ function ball:initialize(x, y, radius)
     self.fixture:setUserData(self)
 
     self.particles = love.graphics.newParticleSystem(ball.feather, 100)
-    self.particles:setLinearDamping(5, 5)
+    self.particles:setLinearDamping(2, 2)
     self.particles:setParticleLifetime(2, 5)
     self.particles:setSizeVariation(1)
     self.particles:setSizes(0.005, 0.005)
