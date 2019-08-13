@@ -13,6 +13,17 @@ function world:initialize()
     self.physworld = love.physics.newWorld(0, -10, true)
     self.camera = camera:new()
     self.ents = {ball:new(3, 5, 1.5), halfpipe:new()}
+    
+    self.physworld:setCallbacks(
+        function(a,b,coll) end,
+        function(a,b,coll) end,
+        function(a,b,coll) end,
+        function(a,b,coll,l,t)
+            local dataA, dataB = a:getUserData(), b:getUserData()
+            if dataA and dataA.postSolve then dataA:postSolve(dataB,a,b,coll,l,t) end
+            if dataB and dataB.postSolve then dataB:postSolve(dataA,a,b,coll,l,t) end
+        end
+    )
 end
 
 function world:draw()
@@ -63,15 +74,27 @@ function ball:initialize(x, y, radius)
     self.fixture = love.physics.newFixture(self.body, self.shape, 1)
     self.fixture:setFriction(10)
     self.fixture:setRestitution(1)
+    self.fixture:setUserData(self)
 
     self.particles = love.graphics.newParticleSystem(ball.feather, 100)
-    self.particles:setLinearDamping(0.5, 0.5)
+    self.particles:setLinearDamping(5, 5)
     self.particles:setParticleLifetime(2, 5)
     self.particles:setSizeVariation(1)
     self.particles:setSizes(0.005, 0.005)
     self.particles:setSpin(-3, 3)
     self.particles:setRotation(-math.pi, math.pi)
     self.particles:setColors(1, 1, 1, 1, 1, 1, 1, 0)
+    self.particles:setLinearAcceleration(0, 0, 0, -10)
+    self.particles:setEmissionArea("ellipse", 1, 0.5, 0, false)
+    self.particles:setSpread(0.6)
+end
+
+function ball:postSolve(dataB,a,b,coll,l,t)
+    if l>0.005 then
+        local x, y = coll:getPositions()
+        self.particles:setPosition(x, y)
+        self.particles:emit(math.floor((l-0.005)*500))
+    end
 end
 
 function ball:draw()
@@ -79,9 +102,8 @@ function ball:draw()
     local dx, dy = self.body:getLinearVelocity()
     love.graphics.draw(ball.graphic, x, y, self.body:getAngle(), self.radius/ball.graphicw, self.radius/ball.graphich, ball.graphicw, ball.graphich)
     
-    self.particles:setLinearAcceleration(0, 0, 0, -10)
-    self.particles:setPosition(x, y)
-    self.particles:emit(1)
+    self.particles:setSpeed(math.sqrt(dx^2+dy^2)/2)
+    self.particles:setDirection(math.atan2(dy,dx))
     self.particles:update(myworld.dt)
     love.graphics.draw(self.particles)
     
