@@ -108,8 +108,8 @@ function ball:draw()
     love.graphics.draw(self.particles)
     
     if love.mouse.isDown(1) then
-        local mpos = love.graphics.inverseTransformPoint(love.mouse.getPosition())
-        self.body:applyForce((mpos - x)/100, (mpos - y)/100)
+        local mx, my = love.graphics.inverseTransformPoint(love.mouse.getPosition())
+        self.body:applyForce((mx - x)/100, (my - y)/100)
     end
 end
 
