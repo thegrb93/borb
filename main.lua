@@ -12,10 +12,10 @@ local myworld
 
 function world:initialize()
     myworld = self
-    self.physworld = love.physics.newWorld(0, -10, true)
+    self.physworld = love.physics.newWorld(0, 10, true)
     self.camera = camera:new()
     self.ents = skiplist.new()
-    self.player = ball:new(3, 5, 1.5)
+    self.player = ball:new(3, -5, 1.5)
     self.bread = bread:new()
     self.ents:insert(self.player)
     self.ents:insert(halfpipe:new())
@@ -44,14 +44,14 @@ function world:draw()
 end
 
 function halfpipe:initialize()
-    local points = {-5, 2.5, -4.5, 2.5,
+    local points = {-5, -2.5, -4.5, -2.5,
     -- 20 nil points
     nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
-    4.5, 2.5, 5, 2.5, 5, -2.5, -5, -2.5, -5, 2.5}
+    4.5, -2.5, 5, -2.5, 5, 2.5, -5, 2.5, -5, -2.5}
     for i=1, 20 do
         local rad = i*math.pi/21
         points[i*2+3] = -4.5 * math.cos(rad)
-        points[i*2+4] = -4.5 * math.sin(rad) + 2.5
+        points[i*2+4] = 4.5 * math.sin(rad) - 2.5
     end
     
     self.body = love.physics.newBody(myworld.physworld, 0, 0, "static")
@@ -91,7 +91,7 @@ function ball:initialize(x, y, radius)
     self.particles:setSpin(-3, 3)
     self.particles:setRotation(-math.pi, math.pi)
     self.particles:setColors(1, 1, 1, 1, 1, 1, 1, 0)
-    self.particles:setLinearAcceleration(0, 0, 0, -10)
+    self.particles:setLinearAcceleration(0, 0, 0, 10)
     self.particles:setEmissionArea("ellipse", 1, 0.5, 0, false)
     self.particles:setSpread(0.6)
 end
@@ -116,9 +116,9 @@ function ball:draw()
     
     local mx, my = myworld.bread:getPos()
     local rx, ry = (mx - x), (my - y)
-    local mag = math.max(math.sqrt(rx^2 + ry^2), 1)
+    local mag = math.max(math.sqrt(rx^2 + ry^2), 2)
     if mag<8 then
-        self.body:applyForce((mx - x)/mag^3*0.1, (my - y)/mag^3*0.1)
+        self.body:applyForce((mx - x)/mag^2*0.1, (my - y)/mag^2*0.1)
     end
 end
 
@@ -136,7 +136,7 @@ end
 
 function bread:draw()
     local x, y = self:getPos()
-    love.graphics.draw(bread.graphic, x, y, math.sin(self.angle)*0.1, 0.002, -0.002, bread.graphicw, bread.graphich)
+    love.graphics.draw(bread.graphic, x, y, math.sin(self.angle)*0.1, 0.002, 0.002, bread.graphicw, bread.graphich)
     self.angle = self.angle + myworld.dt*2
 end
 
@@ -160,7 +160,7 @@ end
 function camera:update()
     self.transform:reset()
     self.transform:translate(winW/2, winH/2)
-    self.transform:scale(self.zoom, -self.zoom)
+    self.transform:scale(self.zoom, self.zoom)
     self.transform:translate(self.x, self.y)
 end
 
