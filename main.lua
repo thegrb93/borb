@@ -1,9 +1,11 @@
 local winW, winH = love.graphics.getPixelDimensions()
 
 local class = require("middleclass")
+local skiplist = require("skiplist")
 local world = class("world")
 local halfpipe = class("halfpipe")
 local ball = class("ball")
+local bread = class("bread")
 local camera = class("camera")
 
 local myworld
@@ -12,7 +14,12 @@ function world:initialize()
     myworld = self
     self.physworld = love.physics.newWorld(0, -10, true)
     self.camera = camera:new()
-    self.ents = {ball:new(3, 5, 1.5), halfpipe:new()}
+    self.ents = skiplist.new()
+    self.player = ball:new(3, 5, 1.5)
+    self.bread = bread:new()
+    self.ents:insert(self.player)
+    self.ents:insert(halfpipe:new())
+    self.ents:insert(self.bread)
     
     self.physworld:setCallbacks(
         function(a,b,coll) end,
@@ -29,7 +36,7 @@ end
 function world:draw()
     self.dt = love.timer.getDelta()
     self.camera:push()
-    for i, v in ipairs(self.ents) do
+    for _, v in self.ents:ipairs() do
         v:draw()
     end
     self.camera:pop()
@@ -107,10 +114,30 @@ function ball:draw()
     self.particles:update(myworld.dt)
     love.graphics.draw(self.particles)
     
-    if love.mouse.isDown(1) then
-        local mx, my = love.graphics.inverseTransformPoint(love.mouse.getPosition())
-        self.body:applyForce((mx - x)/100, (my - y)/100)
+    local mx, my = myworld.bread:getPos()
+    local rx, ry = (mx - x), (my - y)
+    local mag = math.max(math.sqrt(rx^2 + ry^2), 1)
+    if mag<8 then
+        self.body:applyForce((mx - x)/mag^3*0.1, (my - y)/mag^3*0.1)
     end
+end
+
+bread.graphic = love.graphics.newImage( "bread.png" )
+bread.graphicw = bread.graphic:getWidth()*0.5
+bread.graphich = bread.graphic:getHeight()*0.5
+function bread:initialize()
+    bread.order = 1
+    bread.angle = 0
+end
+
+function bread:getPos()
+    return love.graphics.inverseTransformPoint(love.mouse.getPosition())
+end
+
+function bread:draw()
+    local x, y = self:getPos()
+    love.graphics.draw(bread.graphic, x, y, math.sin(self.angle)*0.1, 0.002, -0.002, bread.graphicw, bread.graphich)
+    self.angle = self.angle + myworld.dt*2
 end
 
 function camera:initialize()
