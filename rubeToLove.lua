@@ -1,114 +1,113 @@
-function createWorldFromJson(jsw)
-    world = b2.b2World(
-        autoClearForces=jsw.autoClearForces,
-        continuousPhysics=jsw.continuousPhysics,
-        gravity={jsw.gravity.x,jsw.gravity.y}
-        subStepping=jsw.subStepping,
-        warmStarting=jsw.warmStarting,
-    )
 
-    local bodies = {}
-    if jsw.body then
-        for _, body in pairs(jsw.body) do
-            add_body(world, jsw, js_body)
+local function getVec(x)
+    if x==nil or x==0 then return 0,0 else return x.x,x.y end
+end
+
+local function numToBits(x)
+    local t = {}
+    for i=1, 16 do
+        if x % (i+i) >= i then
+            t[#t+1] = i
         end
     end
-
-    if jsw.joint then
-        for _, joint in pairs(jsw.joint) do
-            local create = jointsTypes[joint.type]
-            if create then
-                jointDef = create(joint, bodies)
-            end
-        end
-    end
-    return world
-
+    return unpack(t)
+end
 
 local jointsTypes = {
     revolute = function(bodies, joint)
+        local x1,y1 = vec(joint.anchorA)
+        local x2,y2 = vec(joint.anchorB)
         local jointDef = love.physics.newRevoluteJoint(
             bodies[joint.bodyA],
             bodies[joint.bodyB],
-            joint.anchorA.x, joint.anchorA.y,
-            joint.anchorB.x, joint.anchorB.y,
+            x1, y1,
+            x2, y2,
             joint.collideConnected,
             joint.refAngle
         )
 
-        setAttr(joint, "enableLimit", jointDef)
-        setAttr(joint, "enableMotor", jointDef)
-        setAttr(joint, "jointSpeed", jointDef, "motorSpeed")
-        setAttr(joint, "lowerLimit", jointDef, "lowerAngle")
-        setAttr(joint, "maxMotorTorque", jointDef)
-        setAttr(joint, "motorSpeed", jointDef)
-        setAttr(joint, "upperLimit", jointDef, "upperAngle")
+        if joint.enableLimit then jointDef:setLimitsEnabled(joint.enableLimit) end
+        if joint.enableMotor then jointDef:setMotorEnabled(joint.enableMotor) end
+        if joint.jointSpeed then jointDef:setJointSpeed(joint.jointSpeed) end
+        if joint.lowerLimit then jointDef:setLowerLimit(joint.lowerLimit) end
+        if joint.maxMotorTorque then jointDef:setMaxMotorTorque(joint.maxMotorTorque) end
+        if joint.motorSpeed then jointDef:setMotorSpeed(joint.motorSpeed) end
+        if joint.upperLimit then jointDef:setUpperLimit(joint.upperLimit) end
 
         return jointDef
     end,
 
     distance = function(bodies, joint)
+        local x1,y1 = vec(joint.anchorA)
+        local x2,y2 = vec(joint.anchorB)
         local jointDef = love.physics.newDistanceJoint(
             bodies[joint.bodyA],
             bodies[joint.bodyB],
-            joint.anchorA.x, joint.anchorA.y,
-            joint.anchorB.x, joint.anchorB.y,
+            x1, y1,
+            x2, y2,
             joint.collideConnected
         )
 
-        setAttr(joint, "dampingRatio", jointDef)
-        setAttr(joint, "frequency", jointDef, "frequencyHz")
-        setAttr(joint, "length", jointDef)
+        if joint.dampingRatio then jointDef:setDampingRatio(joint.dampingRatio) end
+        if joint.frequency then jointDef:setFrequency(joint.frequency) end
+        if joint.length then jointDef:setLength(joint.length) end
 
         return jointDef
     end,
 
     prismatic = function(bodies, joint)
+        local x1,y1 = vec(joint.anchorA)
+        local x2,y2 = vec(joint.anchorB)
+        local ax,ay = vec(joint.localAxisA)
         local jointDef = love.physics.newPrismaticJoint(
             bodies[joint.bodyA],
             bodies[joint.bodyB],
-            joint.anchorA.x, joint.anchorA.y,
-            joint.anchorB.x, joint.anchorB.y,
+            x1, y1,
+            x2, y2,
+            ax, ay,
             joint.collideConnected
         )
 
-        setAttr(joint, "enableLimit", jointDef)
-        setAttr(joint, "enableMotor", jointDef)
-        setAttrVec(joint, "localAxisA", jointDef, "axis")
-        setAttr(joint, "lowerLimit", jointDef, "lowerTranslation")
-        setAttr(joint, "maxMotorForce", jointDef)
-        setAttr(joint, "motorSpeed", jointDef)
-        setAttr(joint, "refAngle", jointDef, "referenceAngle")
-        setAttr(joint, "upperLimit", jointDef, "upperTranslation")
+        if joint.enableLimit then jointDef:setLimitsEnabled(joint.enableLimit) end
+        if joint.enableMotor then jointDef:setMotorEnabled(joint.enableMotor) end
+        if joint.lowerLimit then jointDef:setLowerLimit(joint.lowerLimit) end
+        if joint.maxMotorForce then jointDef:setMaxMotorForce(joint.maxMotorForce) end
+        if joint.motorSpeed then jointDef:setMotorSpeed(joint.motorSpeed) end
+        if joint.upperLimit then jointDef:setUpperLimit(joint.upperLimit) end
 
         return jointDef
     end,
 
     wheel = function(bodies, joint)
+        local x1,y1 = vec(joint.anchorA)
+        local x2,y2 = vec(joint.anchorB)
+        local ax,ay = vec(joint.localAxisA)
         local jointDef = love.physics.newWheelJoint(
             bodies[joint.bodyA],
             bodies[joint.bodyB],
-            joint.anchorA.x, joint.anchorA.y,
-            joint.anchorB.x, joint.anchorB.y,
+            x1, y1,
+            x2, y2,
+            ax, ay,
             joint.collideConnected
         )
 
-        setAttr(joint, "enableMotor", jointDef)
-        setAttrVec(joint, "localAxisA", jointDef)
-        setAttr(joint, "maxMotorTorque", jointDef)
-        setAttr(joint, "motorSpeed", jointDef)
-        setAttr(joint, "springDampingRatio", jointDef, "dampingRatio")
-        setAttr(joint, "springFrequency", jointDef, "frequencyHz")
+        if joint.enableMotor then jointDef:setMotorEnabled(joint.enableMotor) end
+        if joint.maxMotorTorque then jointDef:setMaxMotorTorque(joint.maxMotorTorque) end
+        if joint.motorSpeed then jointDef:setMotorSpeed(joint.motorSpeed) end
+        if joint.springDampingRatio then jointDef:setSpringDampingRatio(joint.springDampingRatio) end
+        if joint.springFrequency then jointDef:setSpringFrequency(joint.springFrequency) end
 
         return jointDef
     end,
 
     rope = function(bodies, joint)
+        local x1,y1 = vec(joint.anchorA)
+        local x2,y2 = vec(joint.anchorB)
         local jointDef = love.physics.newRopeJoint(
             bodies[joint.bodyA],
             bodies[joint.bodyB],
-            joint.anchorA.x, joint.anchorA.y,
-            joint.anchorB.x, joint.anchorB.y,
+            x1, y1,
+            x2, y2,
             joint.maxLength,
             joint.collideConnected
         )
@@ -124,12 +123,6 @@ local jointsTypes = {
             joint.collideConnected
         )
 
-        setAttrVec(joint, "anchorA", jointDef, "localAnchorA")
-        setAttrVec(joint, "anchorB", jointDef, "localAnchorB")
-        setAttr(joint, "maxForce", jointDef)
-        setAttr(joint, "maxTorque", jointDef)
-        setAttrVec(joint, "anchorA", jointDef, "linearOffset")
-
         return jointDef
     end,
 
@@ -137,197 +130,164 @@ local jointsTypes = {
         local jointDef = love.physics.newWeldJoint(
             bodies[joint.bodyA],
             bodies[joint.bodyB],
-            joint.anchorA.x, joint.anchorA.y,
-            joint.anchorB.x, joint.anchorB.y,
+            x1, y1,
+            x2, y2,
             joint.collideConnected
         )
 
-        setAttr(joint, "refAngle", jointDef, "referenceAngle")
-        setAttr(joint, "dampingRatio", jointDef)
-        setAttr(joint, "frequency", jointDef, "frequencyHz")
+        if joint.dampingRatio then jointDef:setDampingRatio(joint.dampingRatio) end
+        if joint.frequency then jointDef:setFrequency(joint.frequency) end
 
         return jointDef
     end,
 
     friction = function(bodies, joint)
+        local x1,y1 = vec(joint.anchorA)
+        local x2,y2 = vec(joint.anchorB)
         local jointDef = love.physics.newFrictionJoint(
             bodies[joint.bodyA],
             bodies[joint.bodyB],
-            joint.anchorA.x, joint.anchorA.y,
-            joint.anchorB.x, joint.anchorB.y,
+            x1, y1,
+            x2, y2,
             joint.collideConnected
         )
 
-        setAttr(joint, "maxForce", jointDef)
-        setAttr(joint, "maxTorque", jointDef)
+        if joint.maxForce then jointDef:setMaxForce(joint.maxForce) end
+        if joint.maxTorque then jointDef:setMaxTorque(joint.maxTorque) end
 
         return jointDef
     end
 }
 
+local shapeTypes = {
+    circle = function(fixture)
+        if fixture.circle.center == 0 the
+            return love.physics.newCircleShape(0, 0, fixture.circle.radius)
+        else
+            return love.physics.newCircleShape(fixture.circle.center.x, fixture.circle.center.y, fixture.circle.radius)
+        end
+    end,
 
+    polygon = function(fixture)
+        local verts = {}
+        for i=1, #fixture.polygon.vertices.x do
+            verts[#verts+1] = fixture.polygon.vertices.x[i]
+            verts[#verts+1] = fixture.polygon.vertices.y[i]
+        end
+        return love.physics.newPolygonShape(verts)
+    end,
 
-function add_body(world, body)
-    local bodyDef = love.physics.newBody(
+    chain = function(fixture)
+        local verts = {}
+        for i=1, #fixture.chain.vertices.x do
+            verts[#verts+1] = fixture.chain.vertices.x[i]
+            verts[#verts+1] = fixture.chain.vertices.y[i]
+        end
+
+        if #verts >= 6 then
+            if "hasNextVertex" in fixture.chain.keys():
+
+                -- del last vertice to prevent crash from first and last
+                -- vertices being to close
+                --del chain_vertices[-1]
+
+                local shape = love.physics.newChainShape(true, verts)
+
+                setAttr(fixture.chain, "hasNextVertex", shape, "m_hasNextVertex",)
+                setAttrVec(fixture.chain, "nextVertex", shape, "m_nextVertex",)
+                setAttr(fixture.chain, "hasPrevVertex", shape, "m_hasPrevVertex",)
+                setAttrVec(fixture.chain, "prevVertex", shape, "m_prevVertex")
+
+                return shape
+            else
+                return love.physics.newChainShape(false, verts)
+            end
+        else
+            return love.physics.newEdgeShape(verts[1], verts[2], verts[3], verts[4])
+        end
+    end
+}
+
+function createBody(world, body)
+    local x,y = vec(body.position)
+    local bodyObj = love.physics.newBody(
         world,
-        body.position.x,
-        body.position.y,
+        x, y,
         body.type
     )
 
-    setAttr(jsw, "allowSleep", bodyDef)
-    setAttr(body, "angle", bodyDef)
-    setAttr(body, "angularDamping", bodyDef)
-    setAttr(body, "angularVelocity", bodyDef)
-    setAttr(body, "awake", bodyDef)
-    setAttr(body, "bullet", bodyDef)
-    setAttr(body, "fixedRotation", bodyDef)
-    setAttr(body, "linearDamping", bodyDef)
-    setAttrVec(body, "linearVelocity", bodyDef)
-    setAttr(body, "gravityScale", bodyDef)  # pybox2d non documented
-    # setAttr(body, "massData-I", bodyDef, "inertiaScale")
-    setAttr(body, "type", bodyDef)
-    setAttr(body, "awake", bodyDef)
+    --if world.allowSleep then world:(world.allowSleep) end
+    if body.angle then body:setAngle(body.angle) end
+    if body.angularDamping then body:setAngularDamping(body.angularDamping) end
+    if body.angularVelocity then body:setAngularVelocity(body.angularVelocity) end
+    if body.awake then body:setAwake(body.awake) end
+    if body.bullet then body:setBullet(body.bullet) end
+    if body.fixedRotation then body:setFixedRotation(body.fixedRotation) end
+    if body.linearDamping then body:setLinearDamping(body.linearDamping) end
+    if body.linearVelocity then body:setLinearVelocity(vec(body.linearVelocity)) end
+    if body.gravityScale then body:(body.gravityScale) end
+    if body["massData-I"] then bodyObj:setInertia(body["massData-I"]) end
 
     for _, fixture in pairs(body.fixture) do
-        add_fixture(bodyDef, jsw, fixture)
+        createFixture(bodyObj, fixture)
     end
 
-    return bodyDef
+    return bodyObj
 end
 
-local shapeTypes = {
-	circle = function()
-        if jsw_fixture.circle.center == 0:
-            center_b2Vec2 = b2.b2Vec2(0, 0)
-        else:
-            center_b2Vec2 = rubeVecToB2Vec2(
-                jsw_fixture.circle.center
-                )
-        fixtureDef.shape = b2.b2CircleShape(
-            pos=center_b2Vec2,
-            radius=jsw_fixture.circle.radius,
-            )
-	end,
-
-	polygon = function()
-    
-        polygon_vertices = rubeVecArrToB2Vec2Arr(
-            jsw_fixture.polygon.vertices
-            )
-        fixtureDef.shape = b2.b2PolygonShape(vertices=polygon_vertices)
-	end,
-
-	chain = function()
-         chain_vertices = rubeVecArrToB2Vec2Arr(
-            jsw_fixture.chain.vertices
-            )
-
-        if len(chain_vertices) >= 3 then
-            if "hasNextVertex" in jsw_fixture.chain.keys():
-
-                # del last vertice to prevent crash from first and last
-                # vertices being to close
-                del chain_vertices[-1]
-
-                fixtureDef.shape = b2.b2LoopShape(
-                    vertices_loop=chain_vertices,
-                    count=len(chain_vertices),
-                    )
-
-                setAttr(
-                    jsw_fixture.chain,
-                    "hasNextVertex",
-                    fixtureDef.shape,
-                    "m_hasNextVertex",
-                    )
-                setAttrVec(
-                    jsw_fixture.chain,
-                    "nextVertex",
-                    fixtureDef,
-                    "m_nextVertex",
-                    )
-
-                setAttr(
-                    jsw_fixture.chain,
-                    "hasPrevVertex",
-                    fixtureDef.shape,
-                    "m_hasPrevVertex",
-                    )
-                setAttrVec(
-                    jsw_fixture.chain,
-                    "prevVertex",
-                    fixtureDef.shape,
-                    "m_prevVertex"
-                    )
-
-            else
-                fixtureDef.shape = b2.b2ChainShape(
-                    vertices_chain=chain_vertices,
-                    count=len(chain_vertices),
-                    )
-            end
-
-        if #chain_vertices < 3 then
-            fixtureDef.shape = b2.b2EdgeShape(
-                vertices=chain_vertices,
-                )
-        end
-	end
-}
-
-function add_fixture(world_body, jsw, jsw_fixture)
-    local shapeDef
+function createFixture(world_body, fixture)
+    local shapeObj
     for k, v in pairs(shapeTypes) do
-        if jsw_fixture[k] then
-            shapeDef = v(jsw_fixture)
+        if fixture[k] then
+            shapeObj = v(fixture)
             break
         end
     end
     
-    local fixtureDef = love.physics.newFixture(world_body, shapeDef, jsw_fixture.density)
+    local fixtureObj = love.physics.newFixture(world_body, shapeObj, fixture.density)
 
-    if jsw_fixture["filter-categoryBits"] then
-        setAttr(jsw_fixture, "filter-categoryBits", fixtureDef, "categoryBits")
+    if fixture["filter-categoryBits"] then
+        fixtureObj:setCategory(numToBits(fixture["filter-categoryBits"]))
     else
-        fixtureDef.categoryBits = 1
+        fixtureObj:setCategory(1)
     end
-
-    --"filter-maskBits": 1, if not present, interpret as 65535
-    if jsw_fixture["filter-maskBits"] then
-        setAttr(jsw_fixture, "filter-maskBits", fixtureDef, "maskBits")
+    if fixture["filter-maskBits"] then
+        fixtureObj:setMask(numToBits(fixture["filter-maskBits"]))
     else
-        fixtureDef.maskBits = 65535
+        fixtureObj:setMask(65535)
     end
+    
+    if fixture["filter-groupIndex"] then fixtureObj:setGroupIndex(fixture["filter-groupIndex"]) end
+    if fixture.friction then fixture:setFriction(fixture.friction) end
+    if fixture.sensor then fixture:setSensor(fixture.sensor) end
+    if fixture.restitution then fixture:setRestitution(fixture.restitution) end
 
-    setAttr(jsw_fixture, "filter-groupIndex", fixtureDef, "groupIndex")
-    setAttr(jsw_fixture, "friction", fixtureDef)
-    setAttr(jsw_fixture, "sensor", fixtureDef, "isSensor")
-    setAttr(jsw_fixture, "restitution", fixtureDef)
-
-    return shapeDef, fixtureDef
+    return shapeObj, fixtureObj
 end
 
-function setAttr(source_dict,source_key,target_obj,target_attr)
-    local val = source_dict[source_key]
-    if val then
-        if target_attr == nil then
-            target_attr = source_key
-        end
-        target_obj[target_attr](target_obj, val)
-    end
-end
+return function(world, rube)
+    --[[world = b2.b2World(
+        autoClearForces=rube.autoClearForces,
+        continuousPhysics=rube.continuousPhysics,
+        gravity={rube.gravity.x,rube.gravity.y}
+        subStepping=rube.subStepping,
+        warmStarting=rube.warmStarting,
+    )]]
 
-function setAttrVec(source_dict,source_key,target_obj,target_attr)
-    local val = source_dict[source_key]
-    if val then
-        if target_attr == nil then
-            target_attr = source_key
-        end
-        if val == 0 then
-            target_obj[target_attr](target_obj, 0, 0)
-        else
-            target_obj[target_attr](target_obj, val.x, val.y)
+    local bodies, shapes, fixtures = {}
+    if rube.body then
+        for _, body in pairs(rube.body) do
+            bodies[body.name] = createBody(world, body)
         end
     end
+
+    if rube.joint then
+        for _, joint in pairs(rube.joint) do
+            local create = jointsTypes[joint.type]
+            if create then
+                jointDef = create(joint, bodies)
+            end
+        end
+    end
+    return world
 end
