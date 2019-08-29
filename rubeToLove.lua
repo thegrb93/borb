@@ -161,7 +161,7 @@ local jointsTypes = {
 
 local shapeTypes = {
     circle = function(fixture)
-        if fixture.circle.center == 0 the
+        if fixture.circle.center == 0 then
             return love.physics.newCircleShape(0, 0, fixture.circle.radius)
         else
             return love.physics.newCircleShape(fixture.circle.center.x, fixture.circle.center.y, fixture.circle.radius)
@@ -185,7 +185,7 @@ local shapeTypes = {
         end
 
         if #verts >= 6 then
-            if "hasNextVertex" in fixture.chain.keys():
+            if fixture.chain.hasNextVertex then
 
                 -- del last vertice to prevent crash from first and last
                 -- vertices being to close
@@ -193,10 +193,10 @@ local shapeTypes = {
 
                 local shape = love.physics.newChainShape(true, verts)
 
-                setAttr(fixture.chain, "hasNextVertex", shape, "m_hasNextVertex",)
-                setAttrVec(fixture.chain, "nextVertex", shape, "m_nextVertex",)
-                setAttr(fixture.chain, "hasPrevVertex", shape, "m_hasPrevVertex",)
-                setAttrVec(fixture.chain, "prevVertex", shape, "m_prevVertex")
+                -- setAttr(fixture.chain, "hasNextVertex", shape, "m_hasNextVertex",)
+                -- setAttrVec(fixture.chain, "nextVertex", shape, "m_nextVertex",)
+                -- setAttr(fixture.chain, "hasPrevVertex", shape, "m_hasPrevVertex",)
+                -- setAttrVec(fixture.chain, "prevVertex", shape, "m_prevVertex")
 
                 return shape
             else
@@ -225,7 +225,7 @@ function createBody(world, body)
     if body.fixedRotation then body:setFixedRotation(body.fixedRotation) end
     if body.linearDamping then body:setLinearDamping(body.linearDamping) end
     if body.linearVelocity then body:setLinearVelocity(vec(body.linearVelocity)) end
-    if body.gravityScale then body:(body.gravityScale) end
+    if body.gravityScale then body:setGravityScale(body.gravityScale) end
     if body["massData-I"] then bodyObj:setInertia(body["massData-I"]) end
 
     for _, fixture in pairs(body.fixture) do
