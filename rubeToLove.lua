@@ -2,16 +2,17 @@ function createWorldFromJson(jsw)
     world = b2.b2World(
         autoClearForces=jsw.autoClearForces,
         continuousPhysics=jsw.continuousPhysics,
-        gravity=rubeVecToB2Vec2(jsw.gravity),
+        gravity={jsw.gravity.x,jsw.gravity.y}
         subStepping=jsw.subStepping,
         warmStarting=jsw.warmStarting,
     )
 
     local bodies = {}
-    if "body" in jsw.keys():
-        # add bodies to world
-        for js_body in jsw.body:
+    if jsw.body then
+        for _, body in pairs(jsw.body) do
             add_body(world, jsw, js_body)
+        end
+    end
 
     if jsw.joint then
         for _, joint in pairs(jsw.joint) do
@@ -73,7 +74,7 @@ local jointsTypes = {
 
         setAttr(joint, "enableLimit", jointDef)
         setAttr(joint, "enableMotor", jointDef)
-        setB2Vec2Attr(joint, "localAxisA", jointDef, "axis")
+        setAttrVec(joint, "localAxisA", jointDef, "axis")
         setAttr(joint, "lowerLimit", jointDef, "lowerTranslation")
         setAttr(joint, "maxMotorForce", jointDef)
         setAttr(joint, "motorSpeed", jointDef)
@@ -93,7 +94,7 @@ local jointsTypes = {
         )
 
         setAttr(joint, "enableMotor", jointDef)
-        setB2Vec2Attr(joint, "localAxisA", jointDef)
+        setAttrVec(joint, "localAxisA", jointDef)
         setAttr(joint, "maxMotorTorque", jointDef)
         setAttr(joint, "motorSpeed", jointDef)
         setAttr(joint, "springDampingRatio", jointDef, "dampingRatio")
@@ -123,11 +124,11 @@ local jointsTypes = {
             joint.collideConnected
         )
 
-        setB2Vec2Attr(joint, "anchorA", jointDef, "localAnchorA")
-        setB2Vec2Attr(joint, "anchorB", jointDef, "localAnchorB")
+        setAttrVec(joint, "anchorA", jointDef, "localAnchorA")
+        setAttrVec(joint, "anchorB", jointDef, "localAnchorB")
         setAttr(joint, "maxForce", jointDef)
         setAttr(joint, "maxTorque", jointDef)
-        setB2Vec2Attr(joint, "anchorA", jointDef, "linearOffset")
+        setAttrVec(joint, "anchorA", jointDef, "linearOffset")
 
         return jointDef
     end,
@@ -182,7 +183,7 @@ function add_body(world, body)
     setAttr(body, "bullet", bodyDef)
     setAttr(body, "fixedRotation", bodyDef)
     setAttr(body, "linearDamping", bodyDef)
-    setB2Vec2Attr(body, "linearVelocity", bodyDef)
+    setAttrVec(body, "linearVelocity", bodyDef)
     setAttr(body, "gravityScale", bodyDef)  # pybox2d non documented
     # setAttr(body, "massData-I", bodyDef, "inertiaScale")
     setAttr(body, "type", bodyDef)
@@ -195,33 +196,8 @@ function add_body(world, body)
     return bodyDef
 end
 
-function add_fixture(world_body, jsw, jsw_fixture)
-    local fixtureDef = love.physics.newFixture(world_body, shape, density)
-
-    # special case for rube documentation of
-    #"filter-categoryBits": 1, //if not present, interpret as 1
-    if "filter-categoryBits" in jsw_fixture.keys():
-        setAttr(jsw_fixture, "filter-categoryBits", fixtureDef, "categoryBits")
-    else:
-        fixtureDef.categoryBits = 1
-
-    # special case for Rube Json property
-    #"filter-maskBits": 1, //if not present, interpret as 65535
-    if "filter-maskBits" in jsw_fixture.keys():
-        setAttr(jsw_fixture, "filter-maskBits", fixtureDef, "maskBits")
-    else:
-        fixtureDef.maskBits = 65535
-
-    setAttr(jsw_fixture, "density", fixtureDef)
-    setAttr(jsw_fixture, "filter-groupIndex", fixtureDef, "groupIndex")
-    setAttr(jsw_fixture, "friction", fixtureDef)
-    setAttr(jsw_fixture, "sensor", fixtureDef, "isSensor")
-    setAttr(jsw_fixture, "restitution", fixtureDef)
-
-    # fixture has one shape that is
-    # polygon, circle or chain in json
-    # chain may be open or loop, or edge in pyBox2D
-    if "circle" in jsw_fixture.keys():  # works ok
+local shapeTypes = {
+	circle = function()
         if jsw_fixture.circle.center == 0:
             center_b2Vec2 = b2.b2Vec2(0, 0)
         else:
@@ -232,21 +208,22 @@ function add_fixture(world_body, jsw, jsw_fixture)
             pos=center_b2Vec2,
             radius=jsw_fixture.circle.radius,
             )
+	end,
 
-    if "polygon" in jsw_fixture.keys():  # works ok
+	polygon = function()
+    
         polygon_vertices = rubeVecArrToB2Vec2Arr(
             jsw_fixture.polygon.vertices
             )
         fixtureDef.shape = b2.b2PolygonShape(vertices=polygon_vertices)
+	end,
 
-    if "chain" in jsw_fixture.keys():  # works ok
-        chain_vertices = rubeVecArrToB2Vec2Arr(
+	chain = function()
+         chain_vertices = rubeVecArrToB2Vec2Arr(
             jsw_fixture.chain.vertices
             )
 
-        if len(chain_vertices) >= 3:
-            # closed-loop b2LoopShape
-            # Done
+        if len(chain_vertices) >= 3 then
             if "hasNextVertex" in jsw_fixture.chain.keys():
 
                 # del last vertice to prevent crash from first and last
@@ -264,7 +241,7 @@ function add_fixture(world_body, jsw, jsw_fixture)
                     fixtureDef.shape,
                     "m_hasNextVertex",
                     )
-                setB2Vec2Attr(
+                setAttrVec(
                     jsw_fixture.chain,
                     "nextVertex",
                     fixtureDef,
@@ -277,64 +254,80 @@ function add_fixture(world_body, jsw, jsw_fixture)
                     fixtureDef.shape,
                     "m_hasPrevVertex",
                     )
-                setB2Vec2Attr(
+                setAttrVec(
                     jsw_fixture.chain,
                     "prevVertex",
                     fixtureDef.shape,
                     "m_prevVertex"
                     )
 
-            else:  # open-ended ChainShape
-                # Done
+            else
                 fixtureDef.shape = b2.b2ChainShape(
                     vertices_chain=chain_vertices,
                     count=len(chain_vertices),
                     )
+            end
 
-        # json chain is b2EdgeShape
-        # Done
-        if len(chain_vertices) < 3:
+        if #chain_vertices < 3 then
             fixtureDef.shape = b2.b2EdgeShape(
                 vertices=chain_vertices,
                 )
+        end
+	end
+}
 
-    # create fixture
-    world_body.CreateFixture(fixtureDef)
+function add_fixture(world_body, jsw, jsw_fixture)
+    local shapeDef
+    for k, v in pairs(shapeTypes) do
+        if jsw_fixture[k] then
+            shapeDef = v(jsw_fixture)
+            break
+        end
+    end
+    
+    local fixtureDef = love.physics.newFixture(world_body, shapeDef, jsw_fixture.density)
 
+    if jsw_fixture["filter-categoryBits"] then
+        setAttr(jsw_fixture, "filter-categoryBits", fixtureDef, "categoryBits")
+    else
+        fixtureDef.categoryBits = 1
+    end
 
-def rubeVecToB2Vec2(rube_vec):
-    # converter from rube json vector to b2Vec2
-    return b2.b2Vec2(rube_vec.x, rube_vec.y)
+    --"filter-maskBits": 1, if not present, interpret as 65535
+    if jsw_fixture["filter-maskBits"] then
+        setAttr(jsw_fixture, "filter-maskBits", fixtureDef, "maskBits")
+    else
+        fixtureDef.maskBits = 65535
+    end
 
+    setAttr(jsw_fixture, "filter-groupIndex", fixtureDef, "groupIndex")
+    setAttr(jsw_fixture, "friction", fixtureDef)
+    setAttr(jsw_fixture, "sensor", fixtureDef, "isSensor")
+    setAttr(jsw_fixture, "restitution", fixtureDef)
 
-def rubeVecArrToB2Vec2Arr(vector_array):
-    """
-    # converter from rube json vector array to b2Vec2 array
-    """
-    return [b2.b2Vec2(x, y) for x, y in zip(
-            vector_array.x,
-            vector_array.y
-            )]
+    return shapeDef, fixtureDef
+end
 
-
-def setB2Vec2Attr(
-        source_dict,
-        source_key,
-        target_obj,
-        target_attr=None,  # is source_key if None
-        ):
-    if source_key in source_dict.keys():
-        # setting attr name
-        if target_attr is None:
+function setAttr(source_dict,source_key,target_obj,target_attr)
+    local val = source_dict[source_key]
+    if val then
+        if target_attr == nil then
             target_attr = source_key
+        end
+        target_obj[target_attr](target_obj, val)
+    end
+end
 
-        # preparing B2Vec
-        if source_dict[source_key] == 0:
-            vec2 = b2.b2Vec2(0, 0)
-        else:
-            vec2 = rubeVecToB2Vec2(source_dict[source_key])
-
-        # setting obj's attr value
-        setattr(target_obj, target_attr, vec2)
-    #else:
-    #    print "No key '" + key + "' in dict '" + dict_source.name + "'"
+function setAttrVec(source_dict,source_key,target_obj,target_attr)
+    local val = source_dict[source_key]
+    if val then
+        if target_attr == nil then
+            target_attr = source_key
+        end
+        if val == 0 then
+            target_obj[target_attr](target_obj, 0, 0)
+        else
+            target_obj[target_attr](target_obj, val.x, val.y)
+        end
+    end
+end
