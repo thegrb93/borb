@@ -11,10 +11,14 @@ local camera = class("camera")
 
 local myworld
 
+world.backgroundimg = love.graphics.newImage( "background.png" )
+world.backgroundw = world.backgroundimg:getWidth()*0.5
+world.backgroundh = world.backgroundimg:getHeight()*0.5
 function world:initialize()
     myworld = self
     self.physworld = love.physics.newWorld(0, 10, true)
     self.camera = camera:new()
+    self.backcamera = camera:new()
     self.ents = skiplist.new()
     self.player = ball:new(3, -5, 1.5)
     self.bread = bread:new()
@@ -35,7 +39,15 @@ function world:initialize()
 end
 
 function world:draw()
-    self.dt = love.timer.getDelta()
+    self.dt = 0.01666666666 --love.timer.getDelta()
+
+    self.backcamera.zoom = self.camera.zoom*0.1
+    self.backcamera:setPos(self.camera.x, self.camera.y)
+    self.backcamera:update()
+    self.backcamera:push()
+    love.graphics.draw(world.backgroundimg, 0, 0, 0, 0.25, 0.25, world.backgroundw, world.backgroundh)
+    self.backcamera:pop()
+
     self.camera:push()
     for _, v in self.ents:ipairs() do
         v:draw()
@@ -115,6 +127,9 @@ function ball:draw()
     self.particles:update(myworld.dt)
     love.graphics.draw(self.particles)
     
+    myworld.camera:setPos(x, y)
+    myworld.camera:update()
+    
     local mx, my = myworld.bread:getPos()
     local rx, ry = (mx - x), (my - y)
     local mag = math.max(math.sqrt(rx^2 + ry^2), 2)
@@ -162,11 +177,16 @@ function camera:update()
     self.transform:reset()
     self.transform:translate(winW/2, winH/2)
     self.transform:scale(self.zoom, self.zoom)
-    self.transform:translate(self.x, self.y)
+    self.transform:translate(-self.x, -self.y)
+end
+
+function camera:setPos(x, y)
+    self.x = x
+    self.y = y
 end
 
 function camera:addZoom(zoom)
-    self.zoom = self.zoom + zoom
+    self.zoom = math.max(self.zoom + zoom, 1)
     self:update()
 end
 

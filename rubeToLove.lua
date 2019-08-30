@@ -289,5 +289,5 @@ return function(world, rube)
             end
         end
     end
-    return world
+    return bodies, shapes, fixtures
 end
