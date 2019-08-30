@@ -1,29 +1,30 @@
 local winW, winH = love.graphics.getPixelDimensions()
 
 local class = require("middleclass")
-local rubetolove = require("rubeToLove")
+local rube = require("rube")
 local skiplist = require("skiplist")
 local world = class("world")
-local halfpipe = class("halfpipe")
+-- local halfpipe = class("halfpipe")
 local ball = class("ball")
 local bread = class("bread")
 local camera = class("camera")
-
-local myworld
+local levelclasses = {spawn = class("spawn")}
 
 world.backgroundimg = love.graphics.newImage( "background.png" )
 world.backgroundw = world.backgroundimg:getWidth()*0.5
 world.backgroundh = world.backgroundimg:getHeight()*0.5
 function world:initialize()
-    myworld = self
+    world.myworld = self
     self.physworld = love.physics.newWorld(0, 10, true)
+    self:loadLevel(require("level1"))
+
     self.camera = camera:new()
     self.backcamera = camera:new()
     self.ents = skiplist.new()
-    self.player = ball:new(3, -5, 1.5)
+    self.player = ball:new(self.spawnpoint.x, self.spawnpoint.y, 1.5)
     self.bread = bread:new()
     self.ents:insert(self.player)
-    self.ents:insert(halfpipe:new())
+    -- self.ents:insert(halfpipe:new())
     self.ents:insert(self.bread)
     
     self.physworld:setCallbacks(
@@ -38,6 +39,27 @@ function world:initialize()
     )
 end
 
+function world:loadLevel(leveldata)
+    self.leveldata = leveldata
+    local bodies = rube(self.physworld, leveldata)
+
+    if leveldata.image then
+        for id, v in pairs(leveldata.image) do
+            if v.name == "world" then
+                self.foregroundimg = love.graphics.newImage( v.file )
+                self.foregroundw = self.foregroundimg:getWidth()*0.5
+                self.foregroundh = self.foregroundimg:getHeight()*0.5
+                self.foregroundscale = v.scale / self.foregroundimg:getHeight()
+            else
+                local obj = levelclasses[v.name]
+                if obj then
+                    obj:new(v)
+                end
+            end
+        end
+    end
+end
+
 function world:draw()
     self.dt = 0.01666666666 --love.timer.getDelta()
 
@@ -49,6 +71,7 @@ function world:draw()
     self.backcamera:pop()
 
     self.camera:push()
+    love.graphics.draw(self.foregroundimg, 0, 0, 0, self.foregroundscale, self.foregroundscale, self.foregroundw, self.foregroundh)
     for _, v in self.ents:ipairs() do
         v:draw()
     end
@@ -56,6 +79,11 @@ function world:draw()
     self.physworld:update(self.dt)
 end
 
+function levelclasses.spawn:initialize(data)
+    world.myworld.spawnpoint = {x = data.center.x, y = -data.center.y}
+end
+
+--[[
 function halfpipe:initialize()
     local points = {-5, -2.5, -4.5, -2.5,
     -- 20 nil points
@@ -67,7 +95,7 @@ function halfpipe:initialize()
         points[i*2+4] = 4.5 * math.sin(rad) - 2.5
     end
     
-    self.body = love.physics.newBody(myworld.physworld, 0, 0, "static")
+    self.body = love.physics.newBody(world.myworld.physworld, 0, 0, "static")
     local shape = love.physics.newChainShape( false, points )
     love.physics.newFixture(self.body, shape, 1)
     
@@ -78,6 +106,7 @@ function halfpipe:draw()
     love.graphics.setLineWidth(0.02)
     love.graphics.line(self.points)
 end
+]]
 
 ball.graphic = love.graphics.newImage( "borb.png" )
 ball.feather = love.graphics.newImage( "feather.png" )
@@ -88,7 +117,7 @@ ball.graphich = ball.graphic:getHeight()*0.5
 function ball:initialize(x, y, radius)
     self.radius = radius
     self.shape = love.physics.newCircleShape(self.radius*0.8)
-    self.body = love.physics.newBody(myworld.physworld, x, y, "dynamic")
+    self.body = love.physics.newBody(world.myworld.physworld, x, y, "dynamic")
     self.body:setLinearDamping(0)
     self.body:setAngularDamping(0)
     self.fixture = love.physics.newFixture(self.body, self.shape, 1)
@@ -124,13 +153,13 @@ function ball:draw()
     
     self.particles:setSpeed(math.sqrt(dx^2+dy^2)/2)
     self.particles:setDirection(math.atan2(dy,dx))
-    self.particles:update(myworld.dt)
+    self.particles:update(world.myworld.dt)
     love.graphics.draw(self.particles)
     
-    myworld.camera:setPos(x, y)
-    myworld.camera:update()
+    world.myworld.camera:setPos(x, y)
+    world.myworld.camera:update()
     
-    local mx, my = myworld.bread:getPos()
+    local mx, my = world.myworld.bread:getPos()
     local rx, ry = (mx - x), (my - y)
     local mag = math.max(math.sqrt(rx^2 + ry^2), 2)
     if mag<8 then
@@ -153,13 +182,13 @@ end
 function bread:draw()
     local x, y = self:getPos()
     love.graphics.draw(bread.graphic, x, y, math.sin(self.angle)*0.1, 0.002, 0.002, bread.graphicw, bread.graphich)
-    self.angle = self.angle + myworld.dt*2
+    self.angle = self.angle + world.myworld.dt*2
 end
 
 function camera:initialize()
     self.x = 0
     self.y = 0
-    self.zoom = 50
+    self.zoom = 25
     self.transform = love.math.newTransform()
     self:update()
 end
@@ -193,9 +222,9 @@ end
 world:new()
 
 function love.wheelmoved(x,y)
-    myworld.camera:addZoom(y)
+    world.myworld.camera:addZoom(y)
 end
 
 function love.draw()
-    myworld:draw()
+    world.myworld:draw()
 end

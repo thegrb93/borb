@@ -1,6 +1,6 @@
 
-local function getVec(x)
-    if x==nil or x==0 then return 0,0 else return x.x,x.y end
+local function vec(x)
+    if x==nil or x==0 then return 0,0 else return x.x,-x.y end
 end
 
 local function numToBits(x)
@@ -14,12 +14,11 @@ local function numToBits(x)
 end
 
 local jointsTypes = {
-    revolute = function(bodies, joint)
+    revolute = function(joint, bodyA, bodyB)
         local x1,y1 = vec(joint.anchorA)
         local x2,y2 = vec(joint.anchorB)
         local jointDef = love.physics.newRevoluteJoint(
-            bodies[joint.bodyA],
-            bodies[joint.bodyB],
+            bodyA, bodyB,
             x1, y1,
             x2, y2,
             joint.collideConnected,
@@ -37,12 +36,11 @@ local jointsTypes = {
         return jointDef
     end,
 
-    distance = function(bodies, joint)
+    distance = function(joint, bodyA, bodyB)
         local x1,y1 = vec(joint.anchorA)
         local x2,y2 = vec(joint.anchorB)
         local jointDef = love.physics.newDistanceJoint(
-            bodies[joint.bodyA],
-            bodies[joint.bodyB],
+            bodyA, bodyB,
             x1, y1,
             x2, y2,
             joint.collideConnected
@@ -55,13 +53,12 @@ local jointsTypes = {
         return jointDef
     end,
 
-    prismatic = function(bodies, joint)
+    prismatic = function(joint, bodyA, bodyB)
         local x1,y1 = vec(joint.anchorA)
         local x2,y2 = vec(joint.anchorB)
         local ax,ay = vec(joint.localAxisA)
         local jointDef = love.physics.newPrismaticJoint(
-            bodies[joint.bodyA],
-            bodies[joint.bodyB],
+            bodyA, bodyB,
             x1, y1,
             x2, y2,
             ax, ay,
@@ -78,13 +75,12 @@ local jointsTypes = {
         return jointDef
     end,
 
-    wheel = function(bodies, joint)
+    wheel = function(joint, bodyA, bodyB)
         local x1,y1 = vec(joint.anchorA)
         local x2,y2 = vec(joint.anchorB)
         local ax,ay = vec(joint.localAxisA)
         local jointDef = love.physics.newWheelJoint(
-            bodies[joint.bodyA],
-            bodies[joint.bodyB],
+            bodyA, bodyB,
             x1, y1,
             x2, y2,
             ax, ay,
@@ -100,12 +96,11 @@ local jointsTypes = {
         return jointDef
     end,
 
-    rope = function(bodies, joint)
+    rope = function(joint, bodyA, bodyB)
         local x1,y1 = vec(joint.anchorA)
         local x2,y2 = vec(joint.anchorB)
         local jointDef = love.physics.newRopeJoint(
-            bodies[joint.bodyA],
-            bodies[joint.bodyB],
+            bodyA, bodyB,
             x1, y1,
             x2, y2,
             joint.maxLength,
@@ -115,10 +110,9 @@ local jointsTypes = {
         return jointDef
     end,
 
-    motor = function(bodies, joint)
+    motor = function(joint, bodyA, bodyB)
         local jointDef = love.physics.newMotorJoint(
-            bodies[joint.bodyA],
-            bodies[joint.bodyB],
+            bodyA, bodyB,
             joint.correctionFactor,
             joint.collideConnected
         )
@@ -126,10 +120,9 @@ local jointsTypes = {
         return jointDef
     end,
 
-    weld = function(bodies, joint)
+    weld = function(joint, bodyA, bodyB)
         local jointDef = love.physics.newWeldJoint(
-            bodies[joint.bodyA],
-            bodies[joint.bodyB],
+            bodyA, bodyB,
             x1, y1,
             x2, y2,
             joint.collideConnected
@@ -141,12 +134,11 @@ local jointsTypes = {
         return jointDef
     end,
 
-    friction = function(bodies, joint)
+    friction = function(joint, bodyA, bodyB)
         local x1,y1 = vec(joint.anchorA)
         local x2,y2 = vec(joint.anchorB)
         local jointDef = love.physics.newFrictionJoint(
-            bodies[joint.bodyA],
-            bodies[joint.bodyB],
+            bodyA, bodyB,
             x1, y1,
             x2, y2,
             joint.collideConnected
@@ -160,38 +152,38 @@ local jointsTypes = {
 }
 
 local shapeTypes = {
-    circle = function(fixture)
-        if fixture.circle.center == 0 then
-            return love.physics.newCircleShape(0, 0, fixture.circle.radius)
+    circle = function(circle)
+        if circle.center == 0 then
+            return love.physics.newCircleShape(0, 0, circle.radius)
         else
-            return love.physics.newCircleShape(fixture.circle.center.x, fixture.circle.center.y, fixture.circle.radius)
+            return love.physics.newCircleShape(circle.center.x, -circle.center.y, circle.radius)
         end
     end,
 
-    polygon = function(fixture)
+    polygon = function(polygon)
         local verts = {}
-        for i=1, #fixture.polygon.vertices.x do
-            verts[#verts+1] = fixture.polygon.vertices.x[i]
-            verts[#verts+1] = fixture.polygon.vertices.y[i]
+        for i=1, #polygon.vertices.x do
+            verts[#verts+1] = polygon.vertices.x[i]
+            verts[#verts+1] = -polygon.vertices.y[i]
         end
         return love.physics.newPolygonShape(verts)
     end,
 
-    chain = function(fixture)
+    chain = function(chain)
         local verts = {}
-        for i=1, #fixture.chain.vertices.x do
-            verts[#verts+1] = fixture.chain.vertices.x[i]
-            verts[#verts+1] = fixture.chain.vertices.y[i]
+        for i=1, #chain.vertices.x do
+            verts[#verts+1] = chain.vertices.x[i]
+            verts[#verts+1] = -chain.vertices.y[i]
         end
 
         if #verts >= 6 then
-            if fixture.chain.hasNextVertex then
+            if chain.hasNextVertex then
 
                 -- del last vertice to prevent crash from first and last
                 -- vertices being to close
                 --del chain_vertices[-1]
 
-                local shape = love.physics.newChainShape(true, verts)
+                local shape = love.physics.newChainShape(false, verts)
 
                 -- setAttr(fixture.chain, "hasNextVertex", shape, "m_hasNextVertex",)
                 -- setAttrVec(fixture.chain, "nextVertex", shape, "m_nextVertex",)
@@ -208,61 +200,65 @@ local shapeTypes = {
     end
 }
 
-function createBody(world, body)
-    local x,y = vec(body.position)
-    local bodyObj = love.physics.newBody(
-        world,
-        x, y,
-        body.type
-    )
-
-    --if world.allowSleep then world:(world.allowSleep) end
-    if body.angle then body:setAngle(body.angle) end
-    if body.angularDamping then body:setAngularDamping(body.angularDamping) end
-    if body.angularVelocity then body:setAngularVelocity(body.angularVelocity) end
-    if body.awake then body:setAwake(body.awake) end
-    if body.bullet then body:setBullet(body.bullet) end
-    if body.fixedRotation then body:setFixedRotation(body.fixedRotation) end
-    if body.linearDamping then body:setLinearDamping(body.linearDamping) end
-    if body.linearVelocity then body:setLinearVelocity(vec(body.linearVelocity)) end
-    if body.gravityScale then body:setGravityScale(body.gravityScale) end
-    if body["massData-I"] then bodyObj:setInertia(body["massData-I"]) end
-
-    for _, fixture in pairs(body.fixture) do
-        createFixture(bodyObj, fixture)
-    end
-
-    return bodyObj
-end
-
-function createFixture(world_body, fixture)
+local function createFixture(bodyObj, fixture)
     local shapeObj
     for k, v in pairs(shapeTypes) do
         if fixture[k] then
-            shapeObj = v(fixture)
+            shapeObj = v(fixture[k])
             break
         end
     end
     
-    local fixtureObj = love.physics.newFixture(world_body, shapeObj, fixture.density)
+    local fixtureObj = love.physics.newFixture(bodyObj, shapeObj, fixture.density)
 
-    if fixture["filter-categoryBits"] then
-        fixtureObj:setCategory(numToBits(fixture["filter-categoryBits"]))
-    else
-        fixtureObj:setCategory(1)
-    end
-    if fixture["filter-maskBits"] then
-        fixtureObj:setMask(numToBits(fixture["filter-maskBits"]))
-    else
-        fixtureObj:setMask(65535)
-    end
+    -- if fixture["filter-categoryBits"] then
+        -- fixtureObj:setCategory(numToBits(fixture["filter-categoryBits"]))
+    -- else
+        -- fixtureObj:setCategory(1)
+    -- end
+    -- if fixture["filter-maskBits"] then
+        -- fixtureObj:setMask(numToBits(fixture["filter-maskBits"]))
+    -- else
+        -- fixtureObj:setMask(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16)
+    -- end
     
-    if fixture["filter-groupIndex"] then fixtureObj:setGroupIndex(fixture["filter-groupIndex"]) end
-    if fixture.friction then fixture:setFriction(fixture.friction) end
-    if fixture.sensor then fixture:setSensor(fixture.sensor) end
-    if fixture.restitution then fixture:setRestitution(fixture.restitution) end
+    -- if fixture["filter-groupIndex"] then fixtureObj:setGroupIndex(fixture["filter-groupIndex"]) end
+    if fixture.friction then fixtureObj:setFriction(fixture.friction) end
+    if fixture.sensor then fixtureObj:setSensor(fixture.sensor) end
+    if fixture.restitution then fixtureObj:setRestitution(fixture.restitution) end
 
     return shapeObj, fixtureObj
+end
+
+local bodytypes = {
+    "static","kinematic","dynamic"
+}
+local function createBody(world, body)
+    local x, y = vec(body.position)
+    local bodyObj = love.physics.newBody(
+        world,
+        x, y,
+        bodytypes[body.type+1]
+    )
+
+    --if world.allowSleep then world:(world.allowSleep) end
+    if body.angle then bodyObj:setAngle(body.angle) end
+    if body.angularDamping then bodyObj:setAngularDamping(body.angularDamping) end
+    if body.angularVelocity then bodyObj:setAngularVelocity(body.angularVelocity) end
+    if body.awake then bodyObj:setAwake(body.awake) end
+    if body.bullet then bodyObj:setBullet(body.bullet) end
+    if body.fixedRotation then bodyObj:setFixedRotation(body.fixedRotation) end
+    if body.linearDamping then bodyObj:setLinearDamping(body.linearDamping) end
+    if body.linearVelocity then bodyObj:setLinearVelocity(vec(body.linearVelocity)) end
+    if body.gravityScale then bodyObj:setGravityScale(body.gravityScale) end
+    if body["massData-I"] then bodyObj:setInertia(body["massData-I"]) end
+
+    local fixtures = {}
+    for _, fixture in pairs(body.fixture) do
+        fixtures[fixture.name] = createFixture(bodyObj, fixture)
+    end
+
+    return bodyObj, fixtures
 end
 
 return function(world, rube)
@@ -274,10 +270,11 @@ return function(world, rube)
         warmStarting=rube.warmStarting,
     )]]
 
-    local bodies, shapes, fixtures = {}
+    local bodies = {}
     if rube.body then
-        for _, body in pairs(rube.body) do
-            bodies[body.name] = createBody(world, body)
+        for id, body in pairs(rube.body) do
+            local bodyObj, fixtures = createBody(world, body)
+            bodies[id] = {body = bodyObj, fixtures = fixtures}
         end
     end
 
@@ -285,9 +282,12 @@ return function(world, rube)
         for _, joint in pairs(rube.joint) do
             local create = jointsTypes[joint.type]
             if create then
-                jointDef = create(joint, bodies)
+                jointDef = create(joint, bodies[joint.bodyA+1].body, bodies[joint.bodyB+1].body)
+            else
+                error("Unknown joint type: "..joint.type)
             end
         end
     end
-    return bodies, shapes, fixtures
+
+    return bodies
 end
