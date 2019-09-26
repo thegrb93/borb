@@ -3,6 +3,7 @@ local winW, winH = love.graphics.getPixelDimensions()
 local class = require("middleclass")
 local rube = require("rube")
 local skiplist = require("skiplist")
+local animation = require("animation")
 local world = class("world")
 -- local halfpipe = class("halfpipe")
 local ball = class("ball")
@@ -15,6 +16,8 @@ world.backgroundw = world.backgroundimg:getWidth()*0.5
 world.backgroundh = world.backgroundimg:getHeight()*0.5
 function world:initialize()
     world.myworld = self
+    self.dt = 0.01666666666 --love.timer.getDelta()
+    self.t = 0
     self.physworld = love.physics.newWorld(0, 10, true)
     self:loadLevel(require("level1"))
 
@@ -61,8 +64,7 @@ function world:loadLevel(leveldata)
 end
 
 function world:draw()
-    self.dt = 0.01666666666 --love.timer.getDelta()
-
+    self.t = self.t + self.dt
     self.backcamera.zoom = self.camera.zoom*0.1
     self.backcamera:setPos(self.camera.x, self.camera.y)
     self.backcamera:update()
@@ -113,7 +115,6 @@ ball.feather = love.graphics.newImage( "feather.png" )
 ball.featherscale = 0.5/ball.feather:getWidth()
 ball.graphicw = ball.graphic:getWidth()*0.5
 ball.graphich = ball.graphic:getHeight()*0.5
-
 function ball:initialize(x, y, radius)
     self.radius = radius
     self.shape = love.physics.newCircleShape(self.radius*0.8)
@@ -136,6 +137,26 @@ function ball:initialize(x, y, radius)
     self.particles:setLinearAcceleration(0, 0, 0, 10)
     self.particles:setEmissionArea("ellipse", 1, 0.5, 0, false)
     self.particles:setSpread(0.6)
+    
+    do
+        local jumpBallRatio = 0.1
+        self.jumpAnim = animation:new(0.3, {
+            {self.radius, self.radius*(1+jumpBallRatio*0.7), self.radius*(1+jumpBallRatio*0.9), self.radius*(1+jumpBallRatio)}
+        }, "cubicBezier")
+        
+        local r = radius * jumpBallRatio
+        local x0 = r - radius
+        local dtheta = 2*math.asin((x0 + math.sqrt(x0^2 - r^2))/r)
+        local numballs = math.floor(math.pi*2/dtheta)
+        dtheta = math.pi*2/numballs
+        self.jumpEntPositions = {}
+        for i=1, numballs do
+            local theta = (i-1)*dtheta
+            local x, y = -x0*math.cos(theta), -x0*math.sin(theta)
+            self.jumpEntPositions[i] = {x, y}
+            self.jumpAnchorPositions[i] = {x*2, y*2}
+        end
+    end
 end
 
 function ball:postSolve(dataB,a,b,coll,l,t)
@@ -149,9 +170,15 @@ end
 function ball:draw()
     local x, y = self.body:getWorldCenter()
     local dx, dy = self.body:getLinearVelocity()
-    love.graphics.draw(ball.graphic, x, y, self.body:getAngle(), self.radius/ball.graphicw, self.radius/ball.graphich, ball.graphicw, ball.graphich)
+    local drawRadius
+    if self.jumping then
+        drawRadius = self.jumpAnim:get(world.myworld.t)
+    else
+        drawRadius = self.radius
+    end
+    love.graphics.draw(ball.graphic, x, y, self.body:getAngle(), drawRadius/ball.graphicw, drawRadius/ball.graphich, ball.graphicw, ball.graphich)
     
-    self.particles:setSpeed(math.sqrt(dx^2+dy^2)/2)
+    self.particles:setSpeed(math.sqrt(dx^2+dy^2)*0.5)
     self.particles:setDirection(math.atan2(dy,dx))
     self.particles:update(world.myworld.dt)
     love.graphics.draw(self.particles)
@@ -165,6 +192,12 @@ function ball:draw()
     if mag<8 then
         self.body:applyForce((mx - x)/mag^2*0.1, (my - y)/mag^2*0.1)
     end
+end
+
+function ball:jump()
+    if self.jumping then return end
+    self.jumping = true
+    self.jumpAnim:reset(world.myworld.t)
 end
 
 bread.graphic = love.graphics.newImage( "bread.png" )
