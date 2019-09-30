@@ -1,6 +1,7 @@
 local class = require("middleclass")
 local animation = require("animation")
 local borb = class("borb")
+local bread = class("bread")
 local world = _G.world
 
 borb.graphic = love.graphics.newImage( "borb.png" )
@@ -18,6 +19,9 @@ function borb:initialize(x, y, radius)
     self.fixture:setFriction(10)
     self.fixture:setRestitution(1)
     self.fixture:setUserData(self)
+    
+    self.bread = bread:new()
+    world.myworld.ents:insert(self.bread)
 
     self.particles = love.graphics.newParticleSystem(borb.feather, 100)
     self.particles:setLinearDamping(2, 2)
@@ -60,6 +64,20 @@ function borb:postSolve(dataB,a,b,coll,l,t)
     end
 end
 
+function borb:think()
+    local x, y = self.body:getWorldCenter()
+    local mx, my = self.bread:getPos()
+    local rx, ry = (mx - x), (my - y)
+    local mag = math.max(math.sqrt(rx^2 + ry^2), 2)
+    if mag<8 then
+        self.body:applyForce((mx - x)/mag^2*0.1, (my - y)/mag^2*0.1)
+    end
+    
+    local x, y = self.body:getWorldCenter()
+    world.myworld.camera:setPos(x, y)
+    world.myworld.camera:update()
+end
+
 function borb:draw()
     local x, y = self.body:getWorldCenter()
     local dx, dy = self.body:getLinearVelocity()
@@ -75,22 +93,31 @@ function borb:draw()
     self.particles:setDirection(math.atan2(dy,dx))
     self.particles:update(world.myworld.dt)
     love.graphics.draw(self.particles)
-    
-    world.myworld.camera:setPos(x, y)
-    world.myworld.camera:update()
-    
-    local mx, my = world.myworld.bread:getPos()
-    local rx, ry = (mx - x), (my - y)
-    local mag = math.max(math.sqrt(rx^2 + ry^2), 2)
-    if mag<8 then
-        self.body:applyForce((mx - x)/mag^2*0.1, (my - y)/mag^2*0.1)
-    end
 end
 
 function borb:jump()
     if self.jumping then return end
     self.jumping = true
     self.jumpAnim:reset(world.myworld.t)
+end
+
+bread.graphic = love.graphics.newImage( "bread.png" )
+bread.graphicw = bread.graphic:getWidth()*0.5
+bread.graphich = bread.graphic:getHeight()*0.5
+function bread:initialize()
+    bread.order = 1
+end
+
+function bread:getPos()
+    return love.graphics.inverseTransformPoint(love.mouse.getPosition())
+end
+
+function bread:think()
+end
+
+function bread:draw()
+    local x, y = bread:getPos()
+    love.graphics.draw(bread.graphic, x, y, math.sin(world.myworld.t)*0.1, 0.002, 0.002, bread.graphicw, bread.graphich)
 end
 
 return borb

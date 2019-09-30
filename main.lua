@@ -7,7 +7,6 @@ local world = class("world")
 _G.world = world
 -- local halfpipe = class("halfpipe")
 local borb = require("borb")
-local bread = class("bread")
 local camera = class("camera")
 local levelclasses = {spawn = class("spawn")}
 
@@ -25,10 +24,8 @@ function world:initialize()
     self.backcamera = camera:new()
     self.ents = skiplist.new()
     self.player = borb:new(self.spawnpoint.x, self.spawnpoint.y, 1.5)
-    self.bread = bread:new()
     self.ents:insert(self.player)
     -- self.ents:insert(halfpipe:new())
-    self.ents:insert(self.bread)
     
     self.physworld:setCallbacks(
         function(a,b,coll) end,
@@ -65,6 +62,10 @@ end
 
 function world:draw()
     self.t = self.t + self.dt
+    for _, v in self.ents:ipairs() do
+        v:think()
+    end
+    
     self.backcamera.zoom = self.camera.zoom*0.1
     self.backcamera:setPos(self.camera.x, self.camera.y)
     self.backcamera:update()
@@ -83,22 +84,6 @@ end
 
 function levelclasses.spawn:initialize(data)
     world.myworld.spawnpoint = {x = data.center.x, y = -data.center.y}
-end
-
-bread.graphic = love.graphics.newImage( "bread.png" )
-bread.graphicw = bread.graphic:getWidth()*0.5
-bread.graphich = bread.graphic:getHeight()*0.5
-function bread:initialize()
-    bread.order = 1
-end
-
-function bread:getPos()
-    return love.graphics.inverseTransformPoint(love.mouse.getPosition())
-end
-
-function bread:draw()
-    local x, y = self:getPos()
-    love.graphics.draw(bread.graphic, x, y, math.sin(world.myworld.t)*0.1, 0.002, 0.002, bread.graphicw, bread.graphich)
 end
 
 function camera:initialize()
