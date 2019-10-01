@@ -11,6 +11,8 @@ borb.graphicw = borb.graphic:getWidth()*0.5
 borb.graphich = borb.graphic:getHeight()*0.5
 function borb:initialize(x, y, radius)
     self.radius = radius
+    self.jumpNum = 8
+    self.jumpSpeed = 10
     self.shape = love.physics.newCircleShape(self.radius*0.8)
     self.body = love.physics.newBody(world.myworld.physworld, x, y, "dynamic")
     self.body:setLinearDamping(0)
@@ -18,6 +20,7 @@ function borb:initialize(x, y, radius)
     self.fixture = love.physics.newFixture(self.body, self.shape, 1)
     self.fixture:setFriction(10)
     self.fixture:setRestitution(1)
+    self.fixture:setFilterData( world.categories.player, 65535, 0 )
     self.fixture:setUserData(self)
     
     self.bread = bread:new()
@@ -34,26 +37,6 @@ function borb:initialize(x, y, radius)
     self.particles:setLinearAcceleration(0, 0, 0, 10)
     self.particles:setEmissionArea("ellipse", 1, 0.5, 0, false)
     self.particles:setSpread(0.6)
-    
-    do
-        local jumpborbRatio = 0.1
-        self.jumpAnim = animation:new(0.3, {
-            {self.radius, self.radius*(1+jumpborbRatio*0.7), self.radius*(1+jumpborbRatio*0.9), self.radius*(1+jumpborbRatio)}
-        }, "cubicBezier")
-        
-        local r = radius * jumpborbRatio
-        local x0 = r - radius
-        local dtheta = 2*math.asin((x0 + math.sqrt(x0^2 - r^2))/r)
-        local numborbs = math.floor(math.pi*2/dtheta)
-        dtheta = math.pi*2/numborbs
-        self.jumpEntPositions = {}
-        for i=1, numborbs do
-            local theta = (i-1)*dtheta
-            local x, y = -x0*math.cos(theta), -x0*math.sin(theta)
-            self.jumpEntPositions[i] = {x, y}
-            self.jumpAnchorPositions[i] = {x*2, y*2}
-        end
-    end
 end
 
 function borb:postSolve(dataB,a,b,coll,l,t)
@@ -65,40 +48,85 @@ function borb:postSolve(dataB,a,b,coll,l,t)
 end
 
 function borb:think()
-    local x, y = self.body:getWorldCenter()
+    self.x, self.y = self.body:getWorldCenter()
+    self.dx, self.dy = self.body:getLinearVelocity()
+    if love.keyboard.isDown("space") then
+        if not self.jumping then
+            self:jump()
+            self.jumping = true
+        end
+    else
+        if self.jumping then
+            self:endJump()
+            self.jumping = false
+        end
+    end
     local mx, my = self.bread:getPos()
-    local rx, ry = (mx - x), (my - y)
+    local rx, ry = (mx - self.x), (my - self.y)
     local mag = math.max(math.sqrt(rx^2 + ry^2), 2)
     if mag<8 then
-        self.body:applyForce((mx - x)/mag^2*0.1, (my - y)/mag^2*0.1)
+        self.body:applyForce((mx - self.x)/mag^2*0.1, (my - self.y)/mag^2*0.1)
     end
     
-    local x, y = self.body:getWorldCenter()
-    world.myworld.camera:setPos(x, y)
+    world.myworld.camera:setPos(self.x, self.y)
     world.myworld.camera:update()
 end
 
 function borb:draw()
-    local x, y = self.body:getWorldCenter()
-    local dx, dy = self.body:getLinearVelocity()
     local drawRadius
     if self.jumping then
-        drawRadius = self.jumpAnim:get(world.myworld.t)
+        local maxR = 0
+        for i=1, self.jumpNum do
+            local jump = self.jumpEnts[i]
+            local x, y = jump.body:getWorldCenter()
+            local R = (self.x-x)^2 + (self.y-y)^2
+            if R>maxR then maxR = R end
+            
+            -- love.graphics.circle("fill",x,y,self.radius*0.79)
+        end
+        drawRadius = self.radius+math.sqrt(maxR)
     else
         drawRadius = self.radius
     end
-    love.graphics.draw(borb.graphic, x, y, self.body:getAngle(), drawRadius/borb.graphicw, drawRadius/borb.graphich, borb.graphicw, borb.graphich)
+    love.graphics.draw(borb.graphic, self.x, self.y, self.body:getAngle(), drawRadius/borb.graphicw, drawRadius/borb.graphich, borb.graphicw, borb.graphich)
     
-    self.particles:setSpeed(math.sqrt(dx^2+dy^2)*0.5)
-    self.particles:setDirection(math.atan2(dy,dx))
+    self.particles:setSpeed(math.sqrt(self.dx^2 + self.dy^2)*0.5)
+    self.particles:setDirection(math.atan2(self.dy, self.dx))
     self.particles:update(world.myworld.dt)
     love.graphics.draw(self.particles)
 end
 
 function borb:jump()
-    if self.jumping then return end
-    self.jumping = true
-    self.jumpAnim:reset(world.myworld.t)
+    self.jumpEnts = {}
+    local jumpRadius = self.radius*0.79
+    for i=1, self.jumpNum do
+        local ang = 2*math.pi*i/self.jumpNum
+        local jump = {}
+        jump.shape = love.physics.newCircleShape(jumpRadius)
+        jump.body = love.physics.newBody(world.myworld.physworld, self.x, self.y, "dynamic")
+        jump.body:setLinearDamping(0)
+        jump.body:setAngularDamping(0)
+        jump.body:setLinearVelocity(self.dx, self.dy)
+        jump.fixture = love.physics.newFixture(jump.body, jump.shape, 1)
+        jump.fixture:setFriction(10)
+        jump.fixture:setRestitution(1)
+        jump.fixture:setFilterData( world.categories.player, 65535 - world.categories.player, 0 )
+        jump.joint = love.physics.newPrismaticJoint( self.body, jump.body, self.x, self.y, self.x, self.y, math.cos(ang), math.sin(ang), false)
+        jump.joint:setLimitsEnabled(true)
+        jump.joint:setLimits(0, jumpRadius*0.3)
+        jump.joint:setMotorEnabled(true)
+        jump.joint:setMotorSpeed(self.jumpSpeed)
+        jump.joint:setMaxMotorForce(5)
+        self.jumpEnts[i] = jump
+    end
+end
+
+function borb:endJump()
+    for i=1, self.jumpNum do
+        local jump = self.jumpEnts[i]
+        jump.joint:destroy()
+        jump.fixture:destroy()
+    end
 end
 
 bread.graphic = love.graphics.newImage( "bread.png" )
@@ -109,7 +137,7 @@ function bread:initialize()
 end
 
 function bread:getPos()
-    return love.graphics.inverseTransformPoint(love.mouse.getPosition())
+    return world.myworld.camera.transform:inverseTransformPoint(love.mouse.getPosition())
 end
 
 function bread:think()

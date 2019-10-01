@@ -13,6 +13,9 @@ local levelclasses = {spawn = class("spawn")}
 world.backgroundimg = love.graphics.newImage( "background.png" )
 world.backgroundw = world.backgroundimg:getWidth()*0.5
 world.backgroundh = world.backgroundimg:getHeight()*0.5
+world.categories = {}
+world.categories.world = 1
+world.categories.player = 2
 function world:initialize()
     world.myworld = self
     self.dt = 0.01666666666 --love.timer.getDelta()

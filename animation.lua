@@ -11,10 +11,11 @@ local animationFuncs = {
     end
 }
 
-function animation:initialize(duration, data, type)
+function animation:initialize(duration, data, type, looping)
     self.duration = duration
     self.data = data
     self.func = animationFuncs[type]
+    self.looping = looping
 end
 
 function animation:reset(time)
@@ -26,11 +27,16 @@ function animation:set(time, frac)
 end
 
 function animation:get(t)
-    local frac1 = math.max(math.min((t - self.startTime)/self.duration, 1), 0)
-    local frac2 = 1-frac
+    local frac1
+    if self.looping then
+        frac1 = ((t - self.startTime) % self.duration)/self.duration
+    else
+        frac1 = math.max(math.min((t - self.startTime)/self.duration, 1), 0)
+    end
+    local frac2 = 1-frac1
     local result = {}
-    for i=1, #data do
-        result[i] = self.func(frac1, frac2, data[i])
+    for i=1, #self.data do
+        result[i] = self.func(frac1, frac2, self.data[i])
     end
     return result
 end
