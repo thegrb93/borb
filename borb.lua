@@ -111,6 +111,7 @@ function borb:jump()
         jump.fixture:setFriction(10)
         jump.fixture:setRestitution(1)
         jump.fixture:setFilterData( world.categories.player, 65535 - world.categories.player, 0 )
+        jump.fixture:setUserData(self)
         jump.joint = love.physics.newPrismaticJoint( self.body, jump.body, self.x, self.y, self.x, self.y, math.cos(ang), math.sin(ang), false)
         jump.joint:setLimitsEnabled(true)
         jump.joint:setLimits(0, jumpRadius*0.3)
@@ -126,6 +127,10 @@ function borb:endJump()
         local jump = self.jumpEnts[i]
         jump.joint:destroy()
         jump.fixture:destroy()
+        jump.joint:release()
+        jump.fixture:release()
+        jump.body:release()
+        jump.shape:release()
     end
 end
 
