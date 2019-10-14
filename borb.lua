@@ -5,10 +5,11 @@ local bread = class("bread")
 local world = _G.world
 
 borb.graphic = love.graphics.newImage( "borb.png" )
+borb.angryeye = love.graphics.newImage( "borb_angryeye.png" )
 borb.feather = love.graphics.newImage( "feather.png" )
 borb.featherscale = 0.5/borb.feather:getWidth()
-borb.graphicw = borb.graphic:getWidth()*0.5
-borb.graphich = borb.graphic:getHeight()*0.5
+borb.originx = borb.graphic:getWidth()*0.5
+borb.originy = borb.graphic:getHeight()*0.5
 function borb:initialize(x, y, radius)
     self.radius = radius
     self.jumpNum = 8
@@ -17,6 +18,7 @@ function borb:initialize(x, y, radius)
     self.body = love.physics.newBody(world.myworld.physworld, x, y, "dynamic")
     self.body:setLinearDamping(0)
     self.body:setAngularDamping(0)
+    self.body:setBullet(true)
     self.fixture = love.physics.newFixture(self.body, self.shape, 1)
     self.fixture:setFriction(10)
     self.fixture:setRestitution(1)
@@ -50,6 +52,7 @@ end
 function borb:think()
     self.x, self.y = self.body:getWorldCenter()
     self.dx, self.dy = self.body:getLinearVelocity()
+    self.angle = self.body:getAngle()
     if love.keyboard.isDown("space") then
         if not self.jumping then
             self:jump()
@@ -61,11 +64,15 @@ function borb:think()
             self.jumping = false
         end
     end
+
+    self.particles:setSpeed(math.sqrt(self.dx^2 + self.dy^2)*0.5)
+    self.particles:setDirection(math.atan2(self.dy, self.dx))
+
     local mx, my = self.bread:getPos()
     local rx, ry = (mx - self.x), (my - self.y)
-    local mag = math.max(math.sqrt(rx^2 + ry^2), 2)
-    if mag<8 then
-        self.body:applyForce((mx - self.x)/mag^2*0.1, (my - self.y)/mag^2*0.1)
+    local mag = math.max(rx^2 + ry^2, 4)
+    if mag<64 then
+        self.body:applyForce((mx - self.x)/mag*0.1, (my - self.y)/mag*0.1)
     end
     
     world.myworld.camera:setPos(self.x, self.y)
@@ -88,10 +95,14 @@ function borb:draw()
     else
         drawRadius = self.radius
     end
-    love.graphics.draw(borb.graphic, self.x, self.y, self.body:getAngle(), drawRadius/borb.graphicw, drawRadius/borb.graphich, borb.graphicw, borb.graphich)
+    love.graphics.push()
+    love.graphics.applyTransform(love.math.newTransform(self.x, self.y, self.angle, drawRadius/borb.originx, drawRadius/borb.originy, borb.originx, borb.originy))
+    love.graphics.draw(borb.graphic)
+    if self.jumping then
+        love.graphics.draw(borb.angryeye, 241, 83)
+    end
+    love.graphics.pop()
     
-    self.particles:setSpeed(math.sqrt(self.dx^2 + self.dy^2)*0.5)
-    self.particles:setDirection(math.atan2(self.dy, self.dx))
     self.particles:update(world.myworld.dt)
     love.graphics.draw(self.particles)
 end
@@ -125,8 +136,7 @@ end
 function borb:endJump()
     for i=1, self.jumpNum do
         local jump = self.jumpEnts[i]
-        jump.joint:destroy()
-        jump.fixture:destroy()
+        jump.body:destroy()
         jump.joint:release()
         jump.fixture:release()
         jump.body:release()
@@ -135,8 +145,8 @@ function borb:endJump()
 end
 
 bread.graphic = love.graphics.newImage( "bread.png" )
-bread.graphicw = bread.graphic:getWidth()*0.5
-bread.graphich = bread.graphic:getHeight()*0.5
+bread.originx = bread.graphic:getWidth()*0.5
+bread.originy = bread.graphic:getHeight()*0.5
 function bread:initialize()
     bread.order = 1
 end
@@ -150,7 +160,7 @@ end
 
 function bread:draw()
     local x, y = bread:getPos()
-    love.graphics.draw(bread.graphic, x, y, math.sin(world.myworld.t)*0.1, 0.002, 0.002, bread.graphicw, bread.graphich)
+    love.graphics.draw(bread.graphic, x, y, math.sin(world.myworld.t)*0.1, 0.002, 0.002, bread.originx, bread.originy)
 end
 
 return borb
