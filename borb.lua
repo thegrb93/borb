@@ -1,12 +1,10 @@
-local class = require("middleclass")
-local animation = require("animation")
-local borb = class("borb")
-local bread = class("bread")
-local world = _G.world
+local animation = require("lib/animation")
+local borb = types.borb
+local bread = types.bread
 
-borb.graphic = love.graphics.newImage( "borb.png" )
-borb.angryeye = love.graphics.newImage( "borb_angryeye.png" )
-borb.feather = love.graphics.newImage( "feather.png" )
+borb.graphic = love.graphics.newImage( "img/borb.png" )
+borb.angryeye = love.graphics.newImage( "img/borb_angryeye.png" )
+borb.feather = love.graphics.newImage( "img/feather.png" )
 borb.featherscale = 0.5/borb.feather:getWidth()
 borb.originx = borb.graphic:getWidth()*0.5
 borb.originy = borb.graphic:getHeight()*0.5
@@ -15,18 +13,18 @@ function borb:initialize(x, y, radius)
     self.jumpNum = 8
     self.jumpSpeed = 10
     self.shape = love.physics.newCircleShape(self.radius*0.8)
-    self.body = love.physics.newBody(world.myworld.physworld, x, y, "dynamic")
+    self.body = love.physics.newBody(world.physworld, x, y, "dynamic")
     self.body:setLinearDamping(0)
     self.body:setAngularDamping(0)
     self.body:setBullet(true)
     self.fixture = love.physics.newFixture(self.body, self.shape, 1)
     self.fixture:setFriction(10)
     self.fixture:setRestitution(1)
-    self.fixture:setFilterData( world.categories.player, 65535, 0 )
+    self.fixture:setFilterData( collisionCategories.player, 65535, 0 )
     self.fixture:setUserData(self)
     
     self.bread = bread:new()
-    world.myworld.ents:insert(self.bread)
+    world.ents:insert(self.bread)
 
     self.particles = love.graphics.newParticleSystem(borb.feather, 100)
     self.particles:setLinearDamping(2, 2)
@@ -46,6 +44,9 @@ function borb:postSolve(dataB,a,b,coll,l,t)
         local x, y = coll:getPositions()
         self.particles:setPosition(x, y)
         self.particles:emit(math.floor((l-0.005)*500))
+    end
+    if dataB and dataB:isInstanceOf(world.levelclasses.spike) then
+        self:explode()
     end
 end
 
@@ -75,8 +76,8 @@ function borb:think()
         self.body:applyForce((mx - self.x)/mag*0.1, (my - self.y)/mag*0.1)
     end
     
-    world.myworld.camera:setPos(self.x, self.y)
-    world.myworld.camera:update()
+    world.camera:setPos(self.x, self.y)
+    world.camera:update()
 end
 
 function borb:draw()
@@ -89,7 +90,7 @@ function borb:draw()
             local R = (self.x-x)^2 + (self.y-y)^2
             if R>maxR then maxR = R end
             
-            -- love.graphics.circle("fill",x,y,self.radius*0.79)
+            love.graphics.circle("fill",x,y,self.radius*0.79)
         end
         drawRadius = self.radius+math.sqrt(maxR)
     else
@@ -103,7 +104,7 @@ function borb:draw()
     end
     love.graphics.pop()
     
-    self.particles:update(world.myworld.dt)
+    self.particles:update(world.dt)
     love.graphics.draw(self.particles)
 end
 
@@ -114,14 +115,14 @@ function borb:jump()
         local ang = 2*math.pi*i/self.jumpNum
         local jump = {}
         jump.shape = love.physics.newCircleShape(jumpRadius)
-        jump.body = love.physics.newBody(world.myworld.physworld, self.x, self.y, "dynamic")
+        jump.body = love.physics.newBody(world.physworld, self.x, self.y, "dynamic")
         jump.body:setLinearDamping(0)
         jump.body:setAngularDamping(0)
         jump.body:setLinearVelocity(self.dx, self.dy)
         jump.fixture = love.physics.newFixture(jump.body, jump.shape, 1)
         jump.fixture:setFriction(10)
         jump.fixture:setRestitution(1)
-        jump.fixture:setFilterData( world.categories.player, 65535 - world.categories.player, 0 )
+        jump.fixture:setFilterData(collisionCategories.player, 65535 - collisionCategories.player, 0)
         jump.fixture:setUserData(self)
         jump.joint = love.physics.newPrismaticJoint( self.body, jump.body, self.x, self.y, self.x, self.y, math.cos(ang), math.sin(ang), false)
         jump.joint:setLimitsEnabled(true)
@@ -144,7 +145,13 @@ function borb:endJump()
     end
 end
 
-bread.graphic = love.graphics.newImage( "bread.png" )
+function borb:explode()
+    
+end
+
+
+
+bread.graphic = love.graphics.newImage( "img/bread.png" )
 bread.originx = bread.graphic:getWidth()*0.5
 bread.originy = bread.graphic:getHeight()*0.5
 function bread:initialize()
@@ -152,7 +159,7 @@ function bread:initialize()
 end
 
 function bread:getPos()
-    return world.myworld.camera.transform:inverseTransformPoint(love.mouse.getPosition())
+    return world.camera.transform:inverseTransformPoint(love.mouse.getPosition())
 end
 
 function bread:think()
@@ -160,7 +167,5 @@ end
 
 function bread:draw()
     local x, y = bread:getPos()
-    love.graphics.draw(bread.graphic, x, y, math.sin(world.myworld.t)*0.1, 0.002, 0.002, bread.originx, bread.originy)
+    love.graphics.draw(bread.graphic, x, y, math.sin(world.t)*0.1, 0.002, 0.002, bread.originx, bread.originy)
 end
-
-return borb
