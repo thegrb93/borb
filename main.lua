@@ -13,7 +13,7 @@ require("world")
 require("borb")
 require("camera")
 
-world:loadLevel(require("levels/level1"))
+world:loadLevel("levels/level1.lua")
 
 function love.wheelmoved(x,y)
     world.camera:addZoom(y)

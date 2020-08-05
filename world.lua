@@ -13,7 +13,7 @@ function world:initialize()
     self.dt = 0.01666666666 --love.timer.getDelta()
 end
 
-function world:loadLevel(leveldata)
+function world:loadLevel(level)
     self.t = 0
     self.physworld = love.physics.newWorld(0, 10, true)
 
@@ -32,7 +32,7 @@ function world:loadLevel(leveldata)
         end
     )
 
-    self.leveldata = leveldata
+    local leveldata = love.filesystem.load(level)()
     local bodies = rube(self.physworld, leveldata)
 
     if leveldata.image then
