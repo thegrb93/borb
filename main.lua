@@ -1,8 +1,8 @@
 class = require("lib/middleclass")
 hook = require("lib/hook")
 scheduler = require("lib/scheduler")()
+util = require("lib/util")
 require("enums")
-require("util")
 
 types = {
 	bread = class("bread"),
@@ -27,9 +27,7 @@ function love.run()
 		love.event.pump()
 		for name,a,b,c,d,e,f in love.event.poll() do
 			if name == "quit" then
-				if not love.quit or not love.quit() then
-					return a or 0
-				end
+				return a or 0
 			end
 			hook.call(name,a,b,c,d,e,f)
 		end
