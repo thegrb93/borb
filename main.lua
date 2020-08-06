@@ -1,6 +1,8 @@
-local class = require("lib/middleclass")
-local hook = require("lib/hook")
+class = require("lib/middleclass")
+hook = require("lib/hook")
+scheduler = require("lib/scheduler")()
 require("enums")
+require("util")
 
 types = {
 	bread = class("bread"),
@@ -14,14 +16,10 @@ require("world")
 require("borb")
 require("camera")
 
-world:loadLevel("levels/level1.lua")
-
-function love.wheelmoved(x,y)
-	world.camera:addZoom(y)
-end
-
 function love.run()
 	-- love.load(love.arg.parseGameArguments(arg), arg)
+	scheduler:tick(love.timer.getTime())
+	world:loadLevel("levels/level1.lua")
  
 	-- Main loop time.
 	return function()
@@ -35,6 +33,8 @@ function love.run()
 			end
 			hook.call(name,a,b,c,d,e,f)
 		end
+
+		scheduler:tick(love.timer.getTime())
  
 		love.graphics.origin()
 		love.graphics.clear(love.graphics.getBackgroundColor())

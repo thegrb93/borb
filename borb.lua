@@ -1,5 +1,4 @@
 local animation = require("lib/animation")
-local hook = require("lib/hook")
 local borb = types.borb
 local bread = types.bread
 
@@ -44,7 +43,8 @@ function borb:initialize(x, y, radius)
     self.think = self.thinkAlive
     self.draw = self.drawAlive
 
-    hook.add("keypressed", self, function(...) print(...) self:explode(0,20) end)
+    scheduler:timer(1, function() self:explode(0,20) end)
+    -- hook.add("keypressed", self, function(...) print(...) self:explode(0,20) end)
 end
 
 function borb:postSolve(dataB,a,b,coll,l,t)
@@ -126,6 +126,7 @@ function borb:drawDead()
         local dx, dy = floof.body:getLinearVelocity()
         local angle = floof.body:getAngle()
         love.graphics.draw(borb.feather, x, y, angle, 0.01, 0.01, borb.featherOriginX, borb.featherOriginY)
+		util.drawBody(floof.body, self.floof.shape)
     end
 end
 
@@ -176,7 +177,7 @@ function borb:explode(velx, vely)
 
     local variance = 5
     local shape = love.physics.newRectangleShape(self.radius*1.5, self.radius*0.5)
-    self.floof = {}
+    self.floof = {shape = shape}
     for i=1, self.floofNum do
         local floof = {}
         floof.body = love.physics.newBody(world.physworld, self.x, self.y, "dynamic")

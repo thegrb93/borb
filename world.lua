@@ -1,4 +1,3 @@
-local class = require("lib/middleclass")
 local rube = require("lib/rube")
 local skiplist = require("lib/skiplist")
 
