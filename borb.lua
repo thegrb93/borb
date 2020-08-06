@@ -1,17 +1,20 @@
 local animation = require("lib/animation")
+local hook = require("lib/hook")
 local borb = types.borb
 local bread = types.bread
 
 borb.graphic = love.graphics.newImage( "img/borb.png" )
 borb.angryeye = love.graphics.newImage( "img/borb_angryeye.png" )
 borb.feather = love.graphics.newImage( "img/feather.png" )
-borb.featherscale = 0.5/borb.feather:getWidth()
 borb.originx = borb.graphic:getWidth()*0.5
 borb.originy = borb.graphic:getHeight()*0.5
+borb.featherOriginX = borb.feather:getWidth()*0.5
+borb.featherOriginY = borb.feather:getWidth()*0.5
 function borb:initialize(x, y, radius)
     self.radius = radius
     self.jumpNum = 8
     self.jumpSpeed = 10
+    self.floofNum = 20
     self.shape = love.physics.newCircleShape(self.radius*0.8)
     self.body = love.physics.newBody(world.physworld, x, y, "dynamic")
     self.body:setLinearDamping(0)
@@ -37,6 +40,11 @@ function borb:initialize(x, y, radius)
     self.particles:setLinearAcceleration(0, 0, 0, 10)
     self.particles:setEmissionArea("ellipse", 1, 0.5, 0, false)
     self.particles:setSpread(0.6)
+    
+    self.think = self.thinkAlive
+    self.draw = self.drawAlive
+
+    hook.add("keypressed", self, function(...) print(...) self:explode(0,20) end)
 end
 
 function borb:postSolve(dataB,a,b,coll,l,t)
@@ -46,11 +54,12 @@ function borb:postSolve(dataB,a,b,coll,l,t)
         self.particles:emit(math.floor((l-0.005)*500))
     end
     if dataB and dataB:isInstanceOf(world.levelclasses.spike) then
-        self:explode()
+        local x, y = coll:getPositions()
+        self:explode(self.x - x, self.y - y)
     end
 end
 
-function borb:think()
+function borb:thinkAlive()
     self.x, self.y = self.body:getWorldCenter()
     self.dx, self.dy = self.body:getLinearVelocity()
     self.angle = self.body:getAngle()
@@ -80,7 +89,10 @@ function borb:think()
     world.camera:update()
 end
 
-function borb:draw()
+function borb:thinkDead()
+end
+
+function borb:drawAlive()
     local drawRadius
     if self.jumping then
         local maxR = 0
@@ -108,18 +120,27 @@ function borb:draw()
     love.graphics.draw(self.particles)
 end
 
+function borb:drawDead()
+    for _, floof in ipairs(self.floof) do
+        local x, y = floof.body:getWorldCenter()
+        local dx, dy = floof.body:getLinearVelocity()
+        local angle = floof.body:getAngle()
+        love.graphics.draw(borb.feather, x, y, angle, 0.01, 0.01, borb.featherOriginX, borb.featherOriginY)
+    end
+end
+
 function borb:jump()
-    self.jumpEnts = {}
     local jumpRadius = self.radius*0.79
+    local shape = love.physics.newCircleShape(jumpRadius)
+    self.jumpEnts = {shape = shape}
     for i=1, self.jumpNum do
         local ang = 2*math.pi*i/self.jumpNum
         local jump = {}
-        jump.shape = love.physics.newCircleShape(jumpRadius)
         jump.body = love.physics.newBody(world.physworld, self.x, self.y, "dynamic")
         jump.body:setLinearDamping(0)
         jump.body:setAngularDamping(0)
         jump.body:setLinearVelocity(self.dx, self.dy)
-        jump.fixture = love.physics.newFixture(jump.body, jump.shape, 1)
+        jump.fixture = love.physics.newFixture(jump.body, shape, 1)
         jump.fixture:setFriction(10)
         jump.fixture:setRestitution(1)
         jump.fixture:setFilterData(collisionCategories.player, 65535 - collisionCategories.player, 0)
@@ -141,12 +162,35 @@ function borb:endJump()
         jump.joint:release()
         jump.fixture:release()
         jump.body:release()
-        jump.shape:release()
     end
+    self.jumpEnts.shape:release()
 end
 
-function borb:explode()
-    
+function borb:explode(velx, vely)
+    if self.think == self.thinkDead then return end
+    if self.jumping then
+        self:endJump()
+        self.jumping = false
+    end
+    self.body:setActive(false)
+
+    local variance = 5
+    local shape = love.physics.newRectangleShape(self.radius*1.5, self.radius*0.5)
+    self.floof = {}
+    for i=1, self.floofNum do
+        local floof = {}
+        floof.body = love.physics.newBody(world.physworld, self.x, self.y, "dynamic")
+        floof.body:setLinearDamping(0)
+        floof.body:setAngularDamping(0)
+        floof.body:setLinearVelocity(self.dx + velx + math.random()*variance, self.dy + vely + math.random()*variance)
+        floof.fixture = love.physics.newFixture(floof.body, shape, 1)
+        floof.fixture:setFriction(10)
+        floof.fixture:setRestitution(1)
+        floof.fixture:setFilterData(collisionCategories.player, 65535 - collisionCategories.player, 0)
+        self.floof[i] = floof
+    end
+    self.think = self.thinkDead
+    self.draw = self.drawDead
 end
 
 
