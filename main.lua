@@ -1,3 +1,4 @@
+scrw, scrh, winmode = love.window.getMode()
 class = require("lib/middleclass")
 hook = require("lib/hook")
 scheduler = require("lib/scheduler")()
@@ -15,10 +16,10 @@ types = {
 require("world")
 require("borb")
 require("camera")
+require("levelents")
 
 function love.run()
 	-- love.load(love.arg.parseGameArguments(arg), arg)
-	scheduler:tick(love.timer.getTime())
 	world:loadLevel("levels/level1.lua")
  
 	-- Main loop time.
@@ -31,8 +32,6 @@ function love.run()
 			end
 			hook.call(name,a,b,c,d,e,f)
 		end
-
-		scheduler:tick(love.timer.getTime())
  
 		love.graphics.origin()
 		love.graphics.clear(love.graphics.getBackgroundColor())

@@ -1,6 +1,7 @@
 local class = require("lib/middleclass")
 local hook = {}
 local hooktbl = class("hooktbl")
+local hooktbloftype = class("hooktbloftype", hooktbl)
 
 function hooktbl:initialize()
     self.nhooks = 0
@@ -52,17 +53,36 @@ function hooktbl:call(...)
     end
 end
 
+function hooktbloftype:call(...)
+    local node = self.hooks
+    for i=1, self.nhooks do
+        local ret = node.func(node.id, ...)
+        if ret~=nil then return ret end
+        node = node.next
+    end
+end
+
 local hooktbls = setmetatable({},{__index=function(self,k) local t=hooktbl:new() self[k]=t return t end})
+local hooktbloftypes = setmetatable({},{__index=function(self,k) local t=hooktbloftype:new() self[k]=t return t end})
 
 function hook.add(name, id, func)
-    hooktbls[name]:add(id, func)
+    if type(id)=="table" then
+        hooktbloftypes[name]:add(id, id[name])
+    else
+        hooktbls[name]:add(id, func)
+    end
 end
 
 function hook.remove(name, id)
-    hooktbls[name]:remove(id)
+    if type(id)=="table" then
+        hooktbloftypes[name]:remove(id)
+    else
+        hooktbls[name]:remove(id)
+    end
 end
 
 function hook.call(name, ...)
+    hooktbloftypes[name]:call(...)
     hooktbls[name]:call(...)
 end
 
