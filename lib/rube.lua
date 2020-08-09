@@ -1,16 +1,7 @@
+local wf = require("lib/windfield")
 
 local function vec(x)
     if x==nil or x==0 then return 0,0 else return x.x,-x.y end
-end
-
-local function numToBits(x)
-    local t = {}
-    for i=1, 16 do
-        if x % (i+i) >= i then
-            t[#t+1] = i
-        end
-    end
-    return unpack(t)
 end
 
 local jointsTypes = {
@@ -152,24 +143,21 @@ local jointsTypes = {
 }
 
 local shapeTypes = {
-    circle = function(circle)
-        if circle.center == 0 then
-            return love.physics.newCircleShape(0, 0, circle.radius)
-        else
-            return love.physics.newCircleShape(circle.center.x, -circle.center.y, circle.radius)
-        end
+    circle = function(body, name, circle)
+        local x, y = vec(circle.center)
+        body:addShape(name, "CircleShape", x, y, circle.radius)
     end,
 
-    polygon = function(polygon)
+    polygon = function(body, name, polygon)
         local verts = {}
         for i=1, #polygon.vertices.x do
             verts[#verts+1] = polygon.vertices.x[i]
             verts[#verts+1] = -polygon.vertices.y[i]
         end
-        return love.physics.newPolygonShape(verts)
+        body:addShape(name, "PolygonShape", verts)
     end,
 
-    chain = function(chain)
+    chain = function(body, name, chain)
         local verts = {}
         for i=1, #chain.vertices.x do
             verts[#verts+1] = chain.vertices.x[i]
@@ -183,51 +171,34 @@ local shapeTypes = {
                 -- vertices being to close
                 --del chain_vertices[-1]
 
-                local shape = love.physics.newChainShape(false, verts)
+                body:addShape(name, "ChainShape", false, verts)
 
                 -- setAttr(fixture.chain, "hasNextVertex", shape, "m_hasNextVertex",)
                 -- setAttrVec(fixture.chain, "nextVertex", shape, "m_nextVertex",)
                 -- setAttr(fixture.chain, "hasPrevVertex", shape, "m_hasPrevVertex",)
                 -- setAttrVec(fixture.chain, "prevVertex", shape, "m_prevVertex")
-
-                return shape
             else
-                return love.physics.newChainShape(false, verts)
+                body:addShape(name, "ChainShape", false, verts)
             end
         else
-            return love.physics.newEdgeShape(verts[1], verts[2], verts[3], verts[4])
+            body:addShape(name, "EdgeShape", verts[1], verts[2], verts[3], verts[4])
         end
     end
 }
 
 local function createFixture(bodyObj, fixture)
-    local shapeObj
     for k, v in pairs(shapeTypes) do
         if fixture[k] then
-            shapeObj = v(fixture[k])
+            v(bodyObj, fixture.name, fixture[k])
             break
         end
     end
     
-    local fixtureObj = love.physics.newFixture(bodyObj, shapeObj, fixture.density)
-
-    -- if fixture["filter-categoryBits"] then
-        -- fixtureObj:setCategory(numToBits(fixture["filter-categoryBits"]))
-    -- else
-        -- fixtureObj:setCategory(1)
-    -- end
-    -- if fixture["filter-maskBits"] then
-        -- fixtureObj:setMask(numToBits(fixture["filter-maskBits"]))
-    -- else
-        -- fixtureObj:setMask(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16)
-    -- end
-    
-    -- if fixture["filter-groupIndex"] then fixtureObj:setGroupIndex(fixture["filter-groupIndex"]) end
+    local fixtureObj = bodyObj.fixtures[fixture.name]
+    if fixture.density then fixtureObj:setDensity(fixture.density) end
     if fixture.friction then fixtureObj:setFriction(fixture.friction) end
     if fixture.sensor then fixtureObj:setSensor(fixture.sensor) end
     if fixture.restitution then fixtureObj:setRestitution(fixture.restitution) end
-
-    return shapeObj, fixtureObj
 end
 
 local bodytypes = {
@@ -235,13 +206,12 @@ local bodytypes = {
 }
 local function createBody(world, body)
     local x, y = vec(body.position)
-    local bodyObj = love.physics.newBody(
-        world,
-        x, y,
-        bodytypes[body.type+1]
+    local bodyObj = wf.Collider.new(
+        world, nil,
+        x, y
     )
 
-    --if world.allowSleep then world:(world.allowSleep) end
+    bodyObj:setType(bodytypes[body.type+1])
     if body.angle then bodyObj:setAngle(body.angle) end
     if body.angularDamping then bodyObj:setAngularDamping(body.angularDamping) end
     if body.angularVelocity then bodyObj:setAngularVelocity(body.angularVelocity) end
@@ -253,12 +223,11 @@ local function createBody(world, body)
     if body.gravityScale then bodyObj:setGravityScale(body.gravityScale) end
     if body["massData-I"] then bodyObj:setInertia(body["massData-I"]) end
 
-    local fixtures = {}
-    for _, fixture in pairs(body.fixture) do
-        fixtures[fixture.name] = createFixture(bodyObj, fixture)
+    for _, fixture in ipairs(body.fixture) do
+        createFixture(bodyObj, fixture)
     end
 
-    return bodyObj, fixtures
+    return bodyObj
 end
 
 return function(world, rube)
@@ -273,21 +242,21 @@ return function(world, rube)
     local bodies = {}
     if rube.body then
         for id, body in pairs(rube.body) do
-            local bodyObj, fixtures = createBody(world, body)
-            bodies[id] = {body = bodyObj, fixtures = fixtures}
+            bodies[id] = createBody(world, body)
         end
     end
 
+    local joints = {}
     if rube.joint then
         for _, joint in pairs(rube.joint) do
             local create = jointsTypes[joint.type]
             if create then
-                jointDef = create(joint, bodies[joint.bodyA+1].body, bodies[joint.bodyB+1].body)
+                joints[#joints+1] = create(joint, bodies[joint.bodyA+1].body, bodies[joint.bodyB+1].body)
             else
                 error("Unknown joint type: "..joint.type)
             end
         end
     end
 
-    return bodies
+    return bodies, joints
 end

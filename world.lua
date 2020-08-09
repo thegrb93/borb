@@ -1,4 +1,4 @@
-local wf = require("windfield")
+local wf = require("lib/windfield")
 local rube = require("lib/rube")
 local skiplist = require("lib/skiplist")
 
@@ -23,7 +23,7 @@ function world:loadLevel(level)
     self.ents = skiplist.new()
 
     local leveldata = love.filesystem.load(level)()
-    local bodies = rube(self.physworld.box2d_world, leveldata)
+    local bodies = rube(self.physworld, leveldata)
 
     if leveldata.image then
         for id, v in pairs(leveldata.image) do
@@ -65,7 +65,10 @@ function world:draw()
     for _, v in self.ents:ipairs() do
         v:draw()
     end
+
+    love.graphics.setLineWidth(0.01)
     self.physworld:draw()
+
     self.camera:pop()
     self.physworld:update(self.dt)
 end

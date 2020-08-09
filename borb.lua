@@ -23,12 +23,14 @@ function borb:initialize(x, y, radius)
     self.body:setLinearDamping(0)
     self.body:setAngularDamping(0)
     self.body:setBullet(true)
-    self.body:setFriction(10)
-    self.body:setRestitution(1)
-    self.body:setCollisionClass("Player")
     self.body:setObject(self)
+    self.body:setCollisionClass("Player")
+    
+    local fixture = self.body.fixtures.Main
+    fixture:setFriction(10)
+    fixture:setRestitution(1)
     self.body:setPostSolve(function(collider_1, collider_2, contact, normal_impulse1, tangent_impulse1, normal_impulse2, tangent_impulse2)
-        self:postSolve(collider_2:getObject(), contact)
+        self:postSolve(collider_2:getObject(), contact, normal_impulse1)
     end)
     
     self.bread = bread:new()
@@ -57,11 +59,11 @@ function borb:keypressed()
     self:explode(0,-40)
 end
 
-function borb:postSolve(other,contact)
-    if l>0.005 then
+function borb:postSolve(other,contact,impulse)
+    if impulse>0.005 then
         local x, y = contact:getPositions()
         self.particles:setPosition(x, y)
-        self.particles:emit(math.floor((l-0.005)*500))
+        self.particles:emit(math.floor((impulse-0.005)*500))
     end
     if other and other:isInstanceOf(world.levelclasses.spike) then
         local x, y = contact:getPositions()
@@ -131,10 +133,10 @@ function borb:drawAlive()
 end
 
 function borb:drawDead()
-    for _, floof in ipairs(self.floof) do
-        local x, y = floof.body:getWorldCenter()
-        local dx, dy = floof.body:getLinearVelocity()
-        local angle = floof.body:getAngle()
+    for _, floof in ipairs(self.floofs) do
+        local x, y = floof:getWorldCenter()
+        local dx, dy = floof:getLinearVelocity()
+        local angle = floof:getAngle()
         love.graphics.draw(borb.feather, x, y, angle, 0.01, 0.01, borb.featherOriginX, borb.featherOriginY)
         -- util.drawBody(floof.body, self.floof.shape)
     end
@@ -151,12 +153,12 @@ function borb:jump()
         jump.body:setLinearDamping(0)
         jump.body:setAngularDamping(0)
         jump.body:setLinearVelocity(self.dx, self.dy)
-        jump.body:setFriction(10)
-        jump.body:setRestitution(1)
         jump.body:setCollisionClass("Player")
         jump.body:setObject(self)
+        jump.body.fixtures.Main:setFriction(10)
+        jump.body.fixtures.Main:setRestitution(1)
 
-        jump.joint = world.physworld:addJoint("PrismaticJoint", self.body, jump.body, self.x, self.y, self.x, self.y, math.cos(ang), math.sin(ang), false)
+        jump.joint = love.physics.newPrismaticJoint(self.body.body, jump.body.body, self.x, self.y, self.x, self.y, math.cos(ang), math.sin(ang), false)
         jump.joint:setLimitsEnabled(true)
         jump.joint:setLimits(0, jumpRadius*0.3)
         jump.joint:setMotorEnabled(true)
@@ -184,20 +186,19 @@ function borb:explode(velx, vely)
     self.body:setActive(false)
 
     local variance = 20
-    self.floof = {}
+    self.floofs = {}
     for i=1, self.floofNum do
-        local floof = {}
-        floof.body = world.physworld:newRectangleCollider(self.x, self.y, self.radius*1.5, self.radius*0.5)
-        floof.body:setType("dynamic")
-        floof.body:setAngle(math.random()*math.pi*2)
-        floof.body:setLinearDamping(1)
-        floof.body:setAngularDamping(0.1)
-        floof.body:setLinearVelocity(self.dx + velx + math.random()*variance, self.dy + vely + math.random()*variance)
-        floof.body:setAngularVelocity((math.random()-0.5)*variance*5)
-        floof.body:setFriction(1)
-        floof.body:setRestitution(0.5)
-        floof.body:setCollisionClass("Player")
-        self.floof[i] = floof
+        local floof = world.physworld:newRectangleCollider(self.x, self.y, self.radius*1.5, self.radius*0.5)
+        floof:setType("dynamic")
+        floof:setAngle(math.random()*math.pi*2)
+        floof:setLinearDamping(1)
+        floof:setAngularDamping(0.1)
+        floof:setLinearVelocity(self.dx + velx + math.random()*variance, self.dy + vely + math.random()*variance)
+        floof:setAngularVelocity((math.random()-0.5)*variance*5)
+        floof:setCollisionClass("Player")
+        floof.fixtures.Main:setFriction(1)
+        floof.fixtures.Main:setRestitution(0.5)
+        self.floofs[i] = floof
     end
     self.think = self.thinkDead
     self.draw = self.drawDead
