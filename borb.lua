@@ -210,7 +210,21 @@ bread.graphic = love.graphics.newImage( "img/bread.png" )
 bread.originx = bread.graphic:getWidth()*0.5
 bread.originy = bread.graphic:getHeight()*0.5
 function bread:initialize()
-    bread.order = 1
+    self.order = 1
+    local x, y = self:getPos()
+    self.body = world.physworld:newCircleCollider(x, y, 0.1)
+    self.body:setType("dynamic")
+    self.body:setLinearDamping(0)
+    self.body:setAngularDamping(0)
+    self.body:setBullet(true)
+    self.body:setObject(self)
+    self.body:setCollisionClass("Player")
+    
+    local fixture = self.body.fixtures.Main
+    fixture:setFriction(10)
+    fixture:setRestitution(1)
+    
+    self.pd = util.newPDController(self.body, 100)
 end
 
 function bread:getPos()
@@ -218,9 +232,13 @@ function bread:getPos()
 end
 
 function bread:think()
+    local tx, ty = self:getPos()
+    local x, y = self.body:getPosition()
+    local dx, dy = self.body:getLinearVelocity()
+    self.pd(x - tx, y - ty, 0, -dx, -dy, 0)
 end
 
 function bread:draw()
-    local x, y = bread:getPos()
-    love.graphics.draw(bread.graphic, x, y, math.sin(world.t)*0.1, 0.002, 0.002, bread.originx, bread.originy)
+    local x, y = self:getPos()
+    love.graphics.draw(self.graphic, x, y, math.sin(world.t)*0.1, 0.002, 0.002, self.originx, self.originy)
 end

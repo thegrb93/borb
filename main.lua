@@ -3,7 +3,7 @@ class = require("lib/middleclass")
 hook = require("lib/hook")
 scheduler = require("lib/scheduler")()
 util = require("lib/util")
-require("enums")
+flux = require("lib/flux")
 
 types = {
 	bread = class("bread"),
