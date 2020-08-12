@@ -96,7 +96,7 @@ function borb:thinkAlive()
     if mag<64 then
         local diffx, diffy = mx - self.x, my - self.y
         self.body:applyForce(diffx/mag*0.2, diffy/mag*0.2)
-        if math.random() > (1-math.sqrt(mag)/8)*0.1 then
+        if math.random() > 1-(1-math.sqrt(mag)/8)*0.1 then
             local mdx, mdy = self.bread.body:getLinearVelocity()
             world:addEntity(crumb:new(self.body, mx, my, math.random()*math.pi*2, mdx, mdy, self.bread.body:getAngularVelocity()))
         end
@@ -273,9 +273,9 @@ function crumb:think()
 	if dirx^2 + diry^2 < 0.01 then self:destroy() return end
 
     local dirlen = math.sqrt(dirx^2 + diry^2)
-    local veldot = (dirx*dx + diry*dy) / dirlen
+    local veldot = math.max((dirx*dx + diry*dy) / dirlen, 0)
     local tanvelx, tanvely = dx - dirx/dirlen*veldot, dy - diry/dirlen*veldot
-    self.x, self.y, self.a = self.updateKutta(dirx - tanvelx + (tdx - dx)*0.01, diry - tanvely + (tdy - dy)*0.1, 0)
+    self.x, self.y, self.a = self.updateKutta(dirx*10 - tanvelx*10 + (tdx - dx)*0.01, diry*10 - tanvely*10 + (tdy - dy)*0.01, 0)
 end
 
 function crumb:destroy()

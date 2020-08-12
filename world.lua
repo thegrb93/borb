@@ -44,7 +44,7 @@ function world:loadLevel(level)
     end
     
     self.player = types.borb:new(self.spawnpoint.x, self.spawnpoint.y, 1.5)
-    self.ents:insert(self.player)
+    self:addEntity(self.player)
 end
 
 function world:addEntity(ent)
@@ -90,7 +90,7 @@ function world:draw()
     self.t = self.t + self.dt
     scheduler:tick(self.t)
 
-    for _, v in self.ents:ipairs() do
+    for _, v in ipairs(self.ents) do
         v:think()
     end
     
@@ -103,7 +103,7 @@ function world:draw()
 
     self.camera:push()
     love.graphics.draw(self.foregroundimg, 0, 0, 0, self.foregroundscale, self.foregroundscale, self.foregroundw, self.foregroundh)
-    for _, v in self.ents:ipairs() do
+    for _, v in ipairs(self.ents) do
         v:draw()
     end
 
