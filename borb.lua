@@ -94,7 +94,12 @@ function borb:thinkAlive()
     local rx, ry = (mx - self.x), (my - self.y)
     local mag = math.max(rx^2 + ry^2, 4)
     if mag<64 then
-        self.body:applyForce((mx - self.x)/mag*0.1, (my - self.y)/mag*0.1)
+        local diffx, diffy = mx - self.x, my - self.y
+        self.body:applyForce(diffx/mag*0.1, diffy/mag*0.1)
+        if math.random() > math.sqrt(mag)*0.1 then
+            local mdx, mdy = self.bread.body:getLinearVelocity()
+            world.ents:insert(crumb:new(self.body, mx, my, math.random()*math.pi*2, mdx, mdy, self.bread.body:getAngularVelocity()))
+        end
     end
     
     world.camera:setPos(self.x, self.y)
@@ -235,7 +240,8 @@ function bread:think()
     local tx, ty = world.camera.transform:inverseTransformPoint(love.mouse.getPosition())
     local x, y = self.body:getPosition()
     local dx, dy = self.body:getLinearVelocity()
-    self.pd(tx - x, ty - y, 0, -dx, -dy, 0)
+    local diffx, diffy = tx - x, ty - y
+    self.pd(diffx, diffy, 0, -dx, -dy, 0)
 end
 
 function bread:draw()
@@ -245,35 +251,39 @@ end
 
 
 
--- crumb.graphic = love.graphics.newImage( "img/bread.png" )
--- crumb.originx = crumb.graphic:getWidth()*0.5
--- crumb.originy = crumb.graphic:getHeight()*0.5
-function crumb:initialize(target, x, y, dx, dy)
+crumb.graphic = love.graphics.newImage( "img/crumb.png" )
+crumb.originx = crumb.graphic:getWidth()*0.5
+crumb.originy = crumb.graphic:getHeight()*0.5
+function crumb:initialize(target, x, y, a, dx, dy, da)
     self.target = target
     self.order = 1
-    local a = math.random()*math.pi*2
-    self.state = util.rungeKutta(x, y, a, dx, dy, (math.random-0.5)*5, self.updateState)
+    self.getKutta, self.updateKutta = util.rungeKutta(x, y, a, dx, dy, da)
     self.x = x
     self.y = y
     self.a = a
 end
 
-function crumb.updateState(x, y, a, dx, dy, da)
-    local tx, ty = self.target:getPosition()
-    local dirx, diry = tx - x, ty - y
-    local dirlen = math.sqrt(dirx^2 + diry^2)
-    local veldot = (dirx*dx + diry*dy) / dirlen
-    local tanvelx, tanvely = dx - dirx*veldot, dy - diry*veldot
-    return dirx*0.2 - tanvelx*0.1, diry*0.2 - tanvely*0.1, 0
-end
-
 function crumb:think()
     if self.target:isDestroyed() then self:destroy() return end
-    self.x, self.y, self.a = self.state()
+    
+    local x, y, a, dx, dy, da = self.getKutta()
+    local tx, ty = self.target:getPosition()
+    local tdx, tdy = self.target:getLinearVelocity()
+    local dirx, diry = tx - x, ty - y
+	if dirx^2 + diry^2 < 0.01 then self:destroy() return end
+
+    local dirlen = math.sqrt(dirx^2 + diry^2)
+    local veldot = (dirx*dx + diry*dy) / dirlen
+    local tanvelx, tanvely = dx - dirx/dirlen*veldot, dy - diry/dirlen*veldot
+    self.x, self.y, self.a = self.updateKutta(dirx - tanvelx + tdx - dx, diry - tanvely + tdy - dy, 0)
+end
+
+function crumb:destroy()
+    world.ents:delete(self)
 end
 
 function crumb:draw()
-    love.graphics.draw(self.graphic, self.x, self.y, self.a, 0.002, 0.002, self.originx, self.originy)
+    love.graphics.draw(self.graphic, self.x, self.y, self.a, 0.02, 0.02, self.originx, self.originy)
 end
 
 

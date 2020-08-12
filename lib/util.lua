@@ -9,9 +9,12 @@ function util.newPDController(body, pgain)
     end
 end
 
-function util.rungeKutta(x, y, a, dx, dy, da, updateForce)
-    return function()
-        local fx, fy, fa = updateForce(x, y, a, dx, dy, da)
+function util.rungeKutta(x, y, a, dx, dy, da)
+    return
+    function()
+        return x, y, a, dx, dy, da
+    end,
+    function(fx, fy, fa)
         dx = dx + fx*world.dt
         dy = dy + fy*world.dt
         da = da + fa*world.dt
