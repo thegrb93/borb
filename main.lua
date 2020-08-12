@@ -8,6 +8,7 @@ flux = require("lib/flux")
 types = {
 	bread = class("bread"),
 	borb = class("borb"),
+	crumb = class("crumb"),
 	spawn = class("spawn"),
 	spike = class("spike"),
 	camera = class("camera"),

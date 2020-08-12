@@ -1,12 +1,24 @@
 local util = {}
 
-function util.newPDController(body, gain)
+function util.newPDController(body, pgain)
     local mass, inertia = body:getMass(), body:getInertia()
-    local pgain = gain*world.dt
-	local dgain = math.sqrt(pgain*world.dt)*2
+    local dgain = math.sqrt(pgain)*2
     return function(dx, dy, da, ddx, ddy, dda)
         body:applyForce((dx*pgain + ddx*dgain)*mass, (dy*pgain + ddy*dgain)*mass)
-        body:applyAngularForce((da*pgain + dda*dgain)*inertia)
+        body:applyTorque((da*pgain + dda*dgain)*inertia)
+    end
+end
+
+function util.rungeKutta(x, y, a, dx, dy, da, updateForce)
+    return function()
+        local fx, fy, fa = updateForce(x, y, a, dx, dy, da)
+        dx = dx + fx*world.dt
+        dy = dy + fy*world.dt
+        da = da + fa*world.dt
+        x = x + dx*world.dt
+        y = y + dy*world.dt
+        a = a + da*world.dt
+        return x, y, a, dx, dy, da
     end
 end
 

@@ -1,6 +1,6 @@
-local animation = require("lib/animation")
 local borb = types.borb
 local bread = types.bread
+local crumb = types.crumb
 
 borb.graphic = love.graphics.newImage( "img/borb.png" )
 borb.angryeye = love.graphics.newImage( "img/borb_angryeye.png" )
@@ -33,7 +33,7 @@ function borb:initialize(x, y, radius)
         self:postSolve(collider_2:getObject(), contact, normal_impulse1)
     end)
     
-    self.bread = bread:new()
+    self.bread = bread:new(x, y-1)
     world.ents:insert(self.bread)
 
     self.particles = love.graphics.newParticleSystem(borb.feather, 100)
@@ -209,36 +209,71 @@ end
 bread.graphic = love.graphics.newImage( "img/bread.png" )
 bread.originx = bread.graphic:getWidth()*0.5
 bread.originy = bread.graphic:getHeight()*0.5
-function bread:initialize()
+function bread:initialize(x, y)
     self.order = 1
-    local x, y = self:getPos()
-    self.body = world.physworld:newCircleCollider(x, y, 0.1)
+    self.body = world.physworld:newCircleCollider(x, y, 0.5)
     self.body:setType("dynamic")
     self.body:setLinearDamping(0)
     self.body:setAngularDamping(0)
     self.body:setBullet(true)
     self.body:setObject(self)
     self.body:setCollisionClass("Player")
+    self.body:setGravityScale(0)
     
     local fixture = self.body.fixtures.Main
     fixture:setFriction(10)
     fixture:setRestitution(1)
     
-    self.pd = util.newPDController(self.body, 100)
+    self.pd = util.newPDController(self.body, 300)
 end
 
 function bread:getPos()
-    return world.camera.transform:inverseTransformPoint(love.mouse.getPosition())
+    return self.body:getPosition()
 end
 
 function bread:think()
-    local tx, ty = self:getPos()
+    local tx, ty = world.camera.transform:inverseTransformPoint(love.mouse.getPosition())
     local x, y = self.body:getPosition()
     local dx, dy = self.body:getLinearVelocity()
-    self.pd(x - tx, y - ty, 0, -dx, -dy, 0)
+    self.pd(tx - x, ty - y, 0, -dx, -dy, 0)
 end
 
 function bread:draw()
-    local x, y = self:getPos()
-    love.graphics.draw(self.graphic, x, y, math.sin(world.t)*0.1, 0.002, 0.002, self.originx, self.originy)
+    local x, y = self.body:getPosition()
+    love.graphics.draw(self.graphic, x, y, self.body:getAngle(), 0.002, 0.002, self.originx, self.originy)
 end
+
+
+
+-- crumb.graphic = love.graphics.newImage( "img/bread.png" )
+-- crumb.originx = crumb.graphic:getWidth()*0.5
+-- crumb.originy = crumb.graphic:getHeight()*0.5
+function crumb:initialize(target, x, y, dx, dy)
+    self.target = target
+    self.order = 1
+    local a = math.random()*math.pi*2
+    self.state = util.rungeKutta(x, y, a, dx, dy, (math.random-0.5)*5, self.updateState)
+    self.x = x
+    self.y = y
+    self.a = a
+end
+
+function crumb.updateState(x, y, a, dx, dy, da)
+    local tx, ty = self.target:getPosition()
+    local dirx, diry = tx - x, ty - y
+    local dirlen = math.sqrt(dirx^2 + diry^2)
+    local veldot = (dirx*dx + diry*dy) / dirlen
+    local tanvelx, tanvely = dx - dirx*veldot, dy - diry*veldot
+    return dirx*0.2 - tanvelx*0.1, diry*0.2 - tanvely*0.1, 0
+end
+
+function crumb:think()
+    if self.target:isDestroyed() then self:destroy() return end
+    self.x, self.y, self.a = self.state()
+end
+
+function crumb:draw()
+    love.graphics.draw(self.graphic, self.x, self.y, self.a, 0.002, 0.002, self.originx, self.originy)
+end
+
+
