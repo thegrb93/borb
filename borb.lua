@@ -34,7 +34,7 @@ function borb:initialize(x, y, radius)
     end)
     
     self.bread = bread:new(x, y-1)
-    world.ents:insert(self.bread)
+    world:addEntity(self.bread)
 
     self.particles = love.graphics.newParticleSystem(borb.feather, 100)
     self.particles:setLinearDamping(2, 2)
@@ -95,10 +95,10 @@ function borb:thinkAlive()
     local mag = math.max(rx^2 + ry^2, 4)
     if mag<64 then
         local diffx, diffy = mx - self.x, my - self.y
-        self.body:applyForce(diffx/mag*0.1, diffy/mag*0.1)
-        if math.random() > math.sqrt(mag)*0.1 then
+        self.body:applyForce(diffx/mag*0.2, diffy/mag*0.2)
+        if math.random() > (1-math.sqrt(mag)/8)*0.1 then
             local mdx, mdy = self.bread.body:getLinearVelocity()
-            world.ents:insert(crumb:new(self.body, mx, my, math.random()*math.pi*2, mdx, mdy, self.bread.body:getAngularVelocity()))
+            world:addEntity(crumb:new(self.body, mx, my, math.random()*math.pi*2, mdx, mdy, self.bread.body:getAngularVelocity()))
         end
     end
     
@@ -275,11 +275,11 @@ function crumb:think()
     local dirlen = math.sqrt(dirx^2 + diry^2)
     local veldot = (dirx*dx + diry*dy) / dirlen
     local tanvelx, tanvely = dx - dirx/dirlen*veldot, dy - diry/dirlen*veldot
-    self.x, self.y, self.a = self.updateKutta(dirx - tanvelx + tdx - dx, diry - tanvely + tdy - dy, 0)
+    self.x, self.y, self.a = self.updateKutta(dirx - tanvelx + (tdx - dx)*0.01, diry - tanvely + (tdy - dy)*0.1, 0)
 end
 
 function crumb:destroy()
-    world.ents:delete(self)
+    world:removeEntity(self)
 end
 
 function crumb:draw()

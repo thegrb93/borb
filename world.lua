@@ -1,6 +1,5 @@
 local wf = require("lib/windfield")
 local rube = require("lib/rube")
-local skiplist = require("lib/skiplist")
 
 local world = class("world")
 local levelclasses = {spawn = types.spawn, spike = types.spike}
@@ -11,6 +10,10 @@ world.backgroundh = world.backgroundimg:getHeight()*0.5
 
 function world:initialize()
     self.dt = 1/winmode.refreshrate
+    self.addents = {}
+    self.rments = {}
+    self.addedents = {}
+    self.ents = {} -- sorted by entity draworder
 end
 
 function world:loadLevel(level)
@@ -20,7 +23,6 @@ function world:loadLevel(level)
 
     self.camera = types.camera:new()
     self.backcamera = types.camera:new()
-    self.ents = skiplist.new()
 
     local leveldata = love.filesystem.load(level)()
     local bodies = rube(self.physworld, leveldata)
@@ -45,7 +47,46 @@ function world:loadLevel(level)
     self.ents:insert(self.player)
 end
 
+function world:addEntity(ent)
+    if self.addedents[ent] then error("Entity is already in entities list!") end
+    if ent.draworder == nil then ent.draworder = 0 end
+    self.addents[ent] = true
+end
+
+function world:removeEntity(ent)
+    if self.addents[ent] then
+        self.addents[ent] = nil
+    else
+        if not self.addedents[ent] then error("Entity isn't in entities list!") end
+        self.rments[ent] = true
+    end
+end
+
 function world:draw()
+    for ent in next, self.addents do
+        self.addedents[ent] = true
+        self.addents[ent] = nil
+        local found = false
+        for k, e in ipairs(self.ents) do
+            if ent.draworder <= e.draworder then
+                table.insert(self.ents, k, ent)
+                found = true
+                break
+            end
+        end
+        if not found then self.ents[#self.ents+1] = ent end
+    end
+    for ent in next, self.rments do
+        self.addedents[ent] = nil
+        self.rments[ent] = nil
+        for k, e in ipairs(self.ents) do
+            if ent==e then
+                table.remove(self.ents, k)
+                break
+            end
+        end
+    end
+
     self.t = self.t + self.dt
     scheduler:tick(self.t)
 

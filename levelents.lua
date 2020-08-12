@@ -7,7 +7,7 @@ end
 local spike = types.spike
 function spike:initialize(data)
     self.x, self.y = data.center.x, -data.center.y
-    world.ents:insert(self)
+    world:addEntity(self)
 end
 
 function spike:draw(data)
