@@ -33,7 +33,7 @@ function borb:initialize(x, y, radius)
         self:postSolve(collider_2:getObject(), contact, normal_impulse1)
     end)
     
-    self.bread = bread:new(x, y-1)
+    self.bread = bread:new(self, x, y-1)
     world:addEntity(self.bread)
 
     self.particles = love.graphics.newParticleSystem(borb.feather, 100)
@@ -91,14 +91,14 @@ function borb:thinkAlive()
     self.particles:setDirection(math.atan2(self.dy, self.dx))
 
     local mx, my = self.bread:getPos()
-    local rx, ry = (mx - self.x), (my - self.y)
+    local rx, ry = mx - self.x, my - self.y
     local mag = math.max(rx^2 + ry^2, 4)
     if mag<64 then
-        local diffx, diffy = mx - self.x, my - self.y
-        self.body:applyForce(diffx/mag*0.2, diffy/mag*0.2)
-        if math.random() > 1-(1-math.sqrt(mag)/8)*0.1 then
+        self.body:applyForce(rx/mag*0.4, ry/mag*0.4)
+        if math.random() > 1-(1-math.sqrt(mag)/8)*0.6 then
             local mdx, mdy = self.bread.body:getLinearVelocity()
-            world:addEntity(crumb:new(self.body, mx, my, math.random()*math.pi*2, mdx, mdy, self.bread.body:getAngularVelocity()))
+            local trx, try = ry, -rx
+            world:addEntity(crumb:new(self.body, mx, my, math.random()*math.pi*2, mdx+(math.random()-0.5)*trx*10, mdy+(math.random()-0.5)*try*10, self.bread.body:getAngularVelocity()))
         end
     end
     
@@ -214,12 +214,13 @@ end
 bread.graphic = love.graphics.newImage( "img/bread.png" )
 bread.originx = bread.graphic:getWidth()*0.5
 bread.originy = bread.graphic:getHeight()*0.5
-function bread:initialize(x, y)
-    self.order = 1
+function bread:initialize(borb, x, y)
+    self.borb = borb
+    self.draworder = 1
     self.body = world.physworld:newCircleCollider(x, y, 0.5)
     self.body:setType("dynamic")
     self.body:setLinearDamping(0)
-    self.body:setAngularDamping(0)
+    self.body:setAngularDamping(1)
     self.body:setBullet(true)
     self.body:setObject(self)
     self.body:setCollisionClass("Player")
@@ -240,8 +241,9 @@ function bread:think()
     local tx, ty = world.camera.transform:inverseTransformPoint(love.mouse.getPosition())
     local x, y = self.body:getPosition()
     local dx, dy = self.body:getLinearVelocity()
+    local bdx, bdy = self.borb.body:getLinearVelocity()
     local diffx, diffy = tx - x, ty - y
-    self.pd(diffx, diffy, 0, -dx, -dy, 0)
+    self.pd(diffx, diffy, 0, bdx-dx, bdy-dy, 0)
 end
 
 function bread:draw()
@@ -256,7 +258,7 @@ crumb.originx = crumb.graphic:getWidth()*0.5
 crumb.originy = crumb.graphic:getHeight()*0.5
 function crumb:initialize(target, x, y, a, dx, dy, da)
     self.target = target
-    self.order = 1
+    self.draworder = 1
     self.getKutta, self.updateKutta = util.rungeKutta(x, y, a, dx, dy, da)
     self.x = x
     self.y = y
@@ -270,12 +272,12 @@ function crumb:think()
     local tx, ty = self.target:getPosition()
     local tdx, tdy = self.target:getLinearVelocity()
     local dirx, diry = tx - x, ty - y
-	if dirx^2 + diry^2 < 0.01 then self:destroy() return end
+	if dirx^2 + diry^2 < 1 then self:destroy() return end
 
     local dirlen = math.sqrt(dirx^2 + diry^2)
     local veldot = math.max((dirx*dx + diry*dy) / dirlen, 0)
     local tanvelx, tanvely = dx - dirx/dirlen*veldot, dy - diry/dirlen*veldot
-    self.x, self.y, self.a = self.updateKutta(dirx*10 - tanvelx*10 + (tdx - dx)*0.01, diry*10 - tanvely*10 + (tdy - dy)*0.01, 0)
+    self.x, self.y, self.a = self.updateKutta(dirx*10 - tanvelx*5 + (tdx - dx)*0, diry*10 - tanvely*5 + (tdy - dy)*0, 0)
 end
 
 function crumb:destroy()
@@ -283,7 +285,7 @@ function crumb:destroy()
 end
 
 function crumb:draw()
-    love.graphics.draw(self.graphic, self.x, self.y, self.a, 0.02, 0.02, self.originx, self.originy)
+    love.graphics.draw(self.graphic, self.x, self.y, self.a, 0.01, 0.01, self.originx, self.originy)
 end
 
 

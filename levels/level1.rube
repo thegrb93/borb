@@ -295,7 +295,7 @@
                 -25.09332656860352,
                 -25.40496444702148,
                 -25.68950271606445,
-                -26.39407539367676,
+                -25.69979667663574,
                 15.03289031982422
               ]
             }
@@ -306,86 +306,6 @@
         "name" : "body0",
         "position" : 0,
         "type" : "static"
-      },
-      
-      {
-        "angle" : 0,
-        "angularVelocity" : 0,
-        "awake" : true,
-        "fixture" : 
-        [
-          
-          {
-            "density" : 1,
-            "friction" : 0.2,
-            "id" : 3,
-            "name" : "fixture1",
-            "shapes" : 
-            [
-              
-              {
-                "radius" : 0.5,
-                "type" : "circle"
-              }
-            ],
-            "vertices" : 
-            {
-              "x" : [ 0.0 ],
-              "y" : [ 0.0 ]
-            }
-          }
-        ],
-        "id" : 3,
-        "linearVelocity" : 0,
-        "massData-I" : 0.09817477315664291,
-        "massData-mass" : 0.7853981852531433,
-        "name" : "body1",
-        "position" : 
-        {
-          "x" : -54.41849899291992,
-          "y" : -12.74073314666748
-        },
-        "type" : "dynamic"
-      },
-      
-      {
-        "angle" : 0,
-        "angularVelocity" : 0,
-        "awake" : true,
-        "fixture" : 
-        [
-          
-          {
-            "density" : 1,
-            "friction" : 0.2,
-            "id" : 4,
-            "name" : "fixture1",
-            "shapes" : 
-            [
-              
-              {
-                "radius" : 0.5,
-                "type" : "circle"
-              }
-            ],
-            "vertices" : 
-            {
-              "x" : [ 0.0 ],
-              "y" : [ 0.0 ]
-            }
-          }
-        ],
-        "id" : 4,
-        "linearVelocity" : 0,
-        "massData-I" : 0.09817477315664291,
-        "massData-mass" : 0.7853981852531433,
-        "name" : "body1",
-        "position" : 
-        {
-          "x" : -51.30651473999023,
-          "y" : -13.13590526580811
-        },
-        "type" : "dynamic"
       }
     ],
     "metaimage" : 
@@ -395,7 +315,7 @@
         "aspectScale" : 1,
         "body" : 1,
         "center" : 0,
-        "file" : "foreground.png",
+        "file" : "../img/foreground.png",
         "filter" : 1,
         "flip" : false,
         "id" : 1,
@@ -411,30 +331,13 @@
           "x" : -64.48968505859375,
           "y" : -11.93455600738525
         },
-        "file" : "borb.png",
+        "file" : "../img/borb.png",
         "filter" : 1,
         "flip" : false,
         "id" : 2,
         "name" : "spawn",
         "opacity" : 0.5,
         "scale" : 3
-      }
-    ],
-    "metajoint" : 
-    [
-      
-      {
-        "anchorA" : 0,
-        "anchorB" : 0,
-        "bodyA" : 3,
-        "bodyB" : 4,
-        "collideConnected" : false,
-        "dampingRatio" : 0,
-        "frequency" : 0,
-        "id" : 1,
-        "length" : 4,
-        "name" : "joint0",
-        "type" : "distance"
       }
     ],
     "positionIterations" : 3,

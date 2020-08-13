@@ -4,7 +4,7 @@ local camera = types.camera
 function camera:initialize()
     self.x = 0
     self.y = 0
-    self.zoom = 15
+    self.zoom = 20
     self.transform = love.math.newTransform()
     self:update()
 end
