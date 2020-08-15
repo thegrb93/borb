@@ -10,19 +10,23 @@ function util.newPDController(body, pgain)
 end
 
 function util.rungeKutta(x, y, a, dx, dy, da)
+    local dt = world.dt
     return
-    function()
-        return x, y, a, dx, dy, da
-    end,
-    function(fx, fy, fa)
-        dx = dx + fx*world.dt
-        dy = dy + fy*world.dt
-        da = da + fa*world.dt
-        x = x + dx*world.dt
-        y = y + dy*world.dt
-        a = a + da*world.dt
-        return x, y, a, dx, dy, da
-    end
+        function(x_, y_, a_, dx_, dy_, da_)
+            x, y, a, dx, dy, da = x_, y_, a_, dx_, dy_, da_
+        end,
+        function()
+            return x, y, a, dx, dy, da
+        end,
+        function(fx, fy, fa)
+            dx = dx + fx*dt
+            dy = dy + fy*dt
+            da = da + fa*dt
+            x = x + dx*dt
+            y = y + dy*dt
+            a = a + da*dt
+            return x, y, a, dx, dy, da
+        end
 end
 
 return util

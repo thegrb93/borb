@@ -63,6 +63,15 @@ function world:removeEntity(ent)
 end
 
 function world:draw()
+    -- Update game logic
+    self.t = self.t + self.dt
+    self.physworld:update(self.dt)
+    scheduler:tick(self.t)
+    for _, v in ipairs(self.ents) do
+        v:think()
+    end
+
+    -- Update game entities
     for ent in next, self.addents do
         self.addedents[ent] = true
         self.addents[ent] = nil
@@ -87,13 +96,7 @@ function world:draw()
         end
     end
 
-    self.t = self.t + self.dt
-    scheduler:tick(self.t)
-
-    for _, v in ipairs(self.ents) do
-        v:think()
-    end
-    
+    -- Draw game entities
     self.backcamera.zoom = self.camera.zoom*0.1
     self.backcamera:setPos(self.camera.x, self.camera.y)
     self.backcamera:update()
@@ -111,7 +114,6 @@ function world:draw()
     self.physworld:draw()
 
     self.camera:pop()
-    self.physworld:update(self.dt)
 end
 
 _G.world = world:new()

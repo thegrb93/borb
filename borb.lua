@@ -1,6 +1,6 @@
 local borb = types.borb
 local bread = types.bread
-local crumb = types.crumb
+local crumbs = types.crumbs
 
 borb.graphic = love.graphics.newImage( "img/borb.png" )
 borb.angryeye = love.graphics.newImage( "img/borb_angryeye.png" )
@@ -35,6 +35,8 @@ function borb:initialize(x, y, radius)
     
     self.bread = bread:new(self, x, y-1)
     world:addEntity(self.bread)
+    self.crumbs = crumbs:new(self.body)
+    world:addEntity(self.crumbs)
 
     self.particles = love.graphics.newParticleSystem(borb.feather, 100)
     self.particles:setLinearDamping(2, 2)
@@ -51,7 +53,6 @@ function borb:initialize(x, y, radius)
     self.think = self.thinkAlive
     self.draw = self.drawAlive
 
-    -- scheduler:timer(1, function() self:explode(0,20) end)
     hook.add("keypressed", self)
 end
 
@@ -98,7 +99,7 @@ function borb:thinkAlive()
         if math.random() > 1-(1-math.sqrt(mag)/8)*0.6 then
             local mdx, mdy = self.bread.body:getLinearVelocity()
             local trx, try = ry, -rx
-            world:addEntity(crumb:new(self.body, mx, my, math.random()*math.pi*2, mdx+(math.random()-0.5)*trx*10, mdy+(math.random()-0.5)*try*10, self.bread.body:getAngularVelocity()))
+            self.crumbs:newCrumb(mx, my, math.random()*math.pi*2, mdx+(math.random()-0.5)*trx*10, mdy+(math.random()-0.5)*try*10, self.bread.body:getAngularVelocity())
         end
     end
     
@@ -253,39 +254,69 @@ end
 
 
 
-crumb.graphic = love.graphics.newImage( "img/crumb.png" )
-crumb.originx = crumb.graphic:getWidth()*0.5
-crumb.originy = crumb.graphic:getHeight()*0.5
-function crumb:initialize(target, x, y, a, dx, dy, da)
+crumbs.graphic = love.graphics.newImage( "img/crumb.png" )
+crumbs.originx = crumbs.graphic:getWidth()*0.5
+crumbs.originy = crumbs.graphic:getHeight()*0.5
+function crumbs:initialize(target)
     self.target = target
     self.draworder = 1
-    self.getKutta, self.updateKutta = util.rungeKutta(x, y, a, dx, dy, da)
-    self.x = x
-    self.y = y
-    self.a = a
+    self.maxcrumbs = 100
+
+    self.crumbs = {}
+    for i=1, self.maxcrumbs do
+        local setKutta, getKutta, updateKutta = util.rungeKutta()
+        local crumb = {
+            active = false,
+            setKutta = setKutta,
+            getKutta = getKutta,
+            updateKutta = updateKutta,
+        }
+        self.crumbs[i] = crumb
+    end
 end
 
-function crumb:think()
-    if self.target:isDestroyed() then self:destroy() return end
-    
-    local x, y, a, dx, dy, da = self.getKutta()
-    local tx, ty = self.target:getPosition()
-    local tdx, tdy = self.target:getLinearVelocity()
+function crumbs:addCrumb(x, y, a, dx, dy, da)
+    for k, v in ipairs(self.crumbs) do
+        if not v.active then
+            v.active = true
+            v.setKutta(x, y, a, dx, dy, da)
+            break
+        end
+    end
+end
+
+function crumbs.crumbThink(crumb, tx, ty, tdx, tdy)
+    local x, y, a, dx, dy, da = crumb.getKutta()
     local dirx, diry = tx - x, ty - y
-	if dirx^2 + diry^2 < 1 then self:destroy() return end
+    if dirx^2 + diry^2 < 1 then crumb.active = false return end
 
     local dirlen = math.sqrt(dirx^2 + diry^2)
     local veldot = math.max((dirx*dx + diry*dy) / dirlen, 0)
     local tanvelx, tanvely = dx - dirx/dirlen*veldot, dy - diry/dirlen*veldot
-    self.x, self.y, self.a = self.updateKutta(dirx*10 - tanvelx*5 + (tdx - dx)*0, diry*10 - tanvely*5 + (tdy - dy)*0, 0)
+    crumb.x, crumb.y, crumb.a = crumb.updateKutta(dirx*10 - tanvelx*5 + (tdx - dx)*0, diry*10 - tanvely*5 + (tdy - dy)*0, 0)
 end
 
-function crumb:destroy()
+function crumbs:think()
+    if self.target:isDestroyed() then self:destroy() return end
+    local tx, ty = self.target:getPosition()
+    local tdx, tdy = self.target:getLinearVelocity()
+    for k, crumb in ipairs(self.crumbs) do
+        if crumb.active then
+            self.crumbThink(crumb, tx, ty, tdx, tdy)
+        end
+    end
+end
+
+function crumbs:destroy()
     world:removeEntity(self)
 end
 
 function crumb:draw()
-    love.graphics.draw(self.graphic, self.x, self.y, self.a, 0.01, 0.01, self.originx, self.originy)
+    for k, crumb in ipairs(self.crumbs) do
+        if crumb.active then
+            love.graphics.draw(self.graphic, crumb.x, crumb.y, crumb.a, 0.01, 0.01, self.originx, self.originy)
+        end
+    end
 end
 
 
