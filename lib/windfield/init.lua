@@ -706,18 +706,18 @@ function Collider.new(world, collider_type, ...)
     if collider_type == 'Circle' then
         local args = {...}
         self.body = love.physics.newBody(self.world.box2d_world, args[1], args[2], 'dynamic')
-        self:addShape('Main', 'CircleShape', args[3])
+        self:addFixture('Main', 'CircleShape', args[3])
 
     elseif collider_type == 'Rectangle' then
         local args = {...}
         self.body = love.physics.newBody(self.world.box2d_world, args[1] + args[3]/2, args[2] + args[4]/2, 'dynamic')
-        self:addShape('Main', 'RectangleShape', args[3], args[4])
+        self:addFixture('Main', 'RectangleShape', args[3], args[4])
 
     elseif collider_type == 'BSGRectangle' then
         local args = {...}
         self.body = love.physics.newBody(self.world.box2d_world, args[1] + args[3]/2, args[2] + args[4]/2, 'dynamic')
         local w, h, s = args[3], args[4], args[5]
-        self:addShape('Main', 'PolygonShape', {
+        self:addFixture('Main', 'PolygonShape', {
             -w/2, -h/2 + s, -w/2 + s, -h/2,
              w/2 - s, -h/2, w/2, -h/2 + s,
              w/2, h/2 - s, w/2 - s, h/2,
@@ -726,13 +726,13 @@ function Collider.new(world, collider_type, ...)
 
     elseif collider_type == 'Polygon' then
         self.body = love.physics.newBody(self.world.box2d_world, 0, 0, 'dynamic')
-        self:addShape('Main', 'PolygonShape', ...)
+        self:addFixture('Main', 'PolygonShape', ...)
     elseif collider_type == 'Line' then
         self.body = love.physics.newBody(self.world.box2d_world, 0, 0, 'dynamic')
-        self:addShape('Main', 'EdgeShape', ...)
+        self:addFixture('Main', 'EdgeShape', ...)
     elseif collider_type == 'Chain' then
         self.body = love.physics.newBody(self.world.box2d_world, 0, 0, 'dynamic')
-        self:addShape('Main', 'ChainShape', ...)
+        self:addFixture('Main', 'ChainShape', ...)
     elseif collider_type == nil then
         local args = {...}
         self.body = love.physics.newBody(self.world.box2d_world, args[1], args[2], 'dynamic')
@@ -841,8 +841,8 @@ function Collider:getObject()
     return self.object
 end
 
-function Collider:addShape(shape_name, shape_type, ...)
-    if self.shapes[shape_name] or self.fixtures[shape_name] then error("Shape/fixture " .. shape_name .. " already exists.") end
+function Collider:addFixture(name, shape_type, ...)
+    if self.shapes[name] or self.fixtures[name] then error("Shape/fixture " .. name .. " already exists.") end
     local shape = love.physics['new' .. shape_type](...)
     local fixture = love.physics.newFixture(self.body, shape)
     if self.world.masks[self.collision_class] then
@@ -851,30 +851,35 @@ function Collider:addShape(shape_name, shape_type, ...)
     end
     fixture:setUserData(self)
 
-    self.shapes[shape_name] = shape
-    self.fixtures[shape_name] = fixture
+    self.shapes[name] = shape
+    self.fixtures[name] = fixture
 end
 
-function Collider:addSensor(shape_name, shape_type, ...)
-    if self.shapes[shape_name] or self.sensors[shape_name] then error("Shape/fixture " .. shape_name .. " already exists.") end
+function Collider:addSensor(name, shape_type, ...)
+    if self.shapes[name] or self.sensors[name] then error("Shape/fixture " .. name .. " already exists.") end
     local shape = love.physics['new' .. shape_type](...)
     local sensor = love.physics.newFixture(self.body, shape)
     sensor:setSensor(true)
     sensor:setUserData(self)
 
-    self.shapes[shape_name] = shape
-    self.sensors[shape_name] = sensor
+    self.shapes[name] = shape
+    self.sensors[name] = sensor
 end
 
-function Collider:removeShape(shape_name)
-    if not self.shapes[shape_name] then return end
-    self.shapes[shape_name] = nil
-    self.fixtures[shape_name]:setUserData(nil)
-    self.fixtures[shape_name]:destroy()
-    self.fixtures[shape_name] = nil
-    self.sensors[shape_name]:setUserData(nil)
-    self.sensors[shape_name]:destroy()
-    self.sensors[shape_name] = nil
+function Collider:removeShape(name)
+    self.shapes[name] = nil
+    local fixture = self.fixtures[name]
+    if fixture then
+        fixture:setUserData(nil)
+        fixture:destroy()
+        self.fixtures[name] = nil
+    end
+    local sensor = self.sensors[name]
+    if sensor then
+        sensor:setUserData(nil)
+        sensor:destroy()
+        self.sensors[name] = nil
+    end
 end
 
 function Collider:destroy()
@@ -884,12 +889,18 @@ function Collider:destroy()
     self:collisionEventsClear()
 
     self:setObject(nil)
-    for name, _ in pairs(self.fixtures) do
-        self.shapes[name] = nil
-        self.fixtures[name]:setUserData(nil)
+    for name, fixture in pairs(self.fixtures) do
+        fixture:setUserData(nil)
+        fixture:destroy()
         self.fixtures[name] = nil
-        self.sensors[name]:setUserData(nil)
+    end
+    for name, sensor in pairs(self.sensors) do
+        sensor:setUserData(nil)
+        sensor:destroy()
         self.sensors[name] = nil
+    end
+    for name, shape in pairs(self.shapes) do
+        self.shapes[name] = nil
     end
     self.body:destroy()
     self.body = nil

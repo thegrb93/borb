@@ -155,34 +155,32 @@ function borb:jump()
     self.jumpEnts = {}
     for i=1, self.jumpNum do
         local ang = 2*math.pi*i/self.jumpNum
-        local jump = {}
-        jump.body = world.physworld:newCircleCollider(self.x, self.y, jumpRadius)
-        jump.body:setType("dynamic")
-        jump.body:setLinearDamping(0)
-        jump.body:setAngularDamping(0)
-        jump.body:setLinearVelocity(self.dx, self.dy)
-        jump.body:setCollisionClass("Player")
-        jump.body:setObject(self)
-        jump.body.fixtures.Main:setFriction(10)
-        jump.body.fixtures.Main:setRestitution(1)
+        local body = {}
+        body = world.physworld:newCircleCollider(self.x, self.y, jumpRadius)
+        body:setType("dynamic")
+        body:setLinearDamping(0)
+        body:setAngularDamping(0)
+        body:setLinearVelocity(self.dx, self.dy)
+        body:setCollisionClass("Player")
+        body:setObject(self)
+        body.fixtures.Main:setFriction(10)
+        body.fixtures.Main:setRestitution(1)
+        self.jumpEnts[i] = body
 
-        jump.joint = love.physics.newPrismaticJoint(self.body.body, jump.body.body, self.x, self.y, self.x, self.y, math.cos(ang), math.sin(ang), false)
-        jump.joint:setLimitsEnabled(true)
-        jump.joint:setLimits(0, jumpRadius*0.3)
-        jump.joint:setMotorEnabled(true)
-        jump.joint:setMotorSpeed(self.jumpSpeed)
-        jump.joint:setMaxMotorForce(5)
-        self.jumpEnts[i] = jump
+        local joint = love.physics.newPrismaticJoint(self.body.body, body.body, self.x, self.y, self.x, self.y, math.cos(ang), math.sin(ang), false)
+        joint:setLimitsEnabled(true)
+        joint:setLimits(0, jumpRadius*0.3)
+        joint:setMotorEnabled(true)
+        joint:setMotorSpeed(self.jumpSpeed)
+        joint:setMaxMotorForce(5)
     end
 end
 
 function borb:endJump()
     for i=1, self.jumpNum do
-        local jump = self.jumpEnts[i]
-        jump.body:destroy()
-        world.physworld:removeJoint(jump.joint)
+        local body = self.jumpEnts[i]
+        body:destroy()
     end
-    self.jumpEnts.shape:release()
 end
 
 function borb:explode(velx, vely)

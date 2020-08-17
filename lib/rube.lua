@@ -145,7 +145,7 @@ local jointsTypes = {
 local shapeTypes = {
     circle = function(body, name, circle)
         local x, y = vec(circle.center)
-        body:addShape(name, "CircleShape", x, y, circle.radius)
+        body:addFixture(name, "CircleShape", x, y, circle.radius)
     end,
 
     polygon = function(body, name, polygon)
@@ -154,7 +154,7 @@ local shapeTypes = {
             verts[#verts+1] = polygon.vertices.x[i]
             verts[#verts+1] = -polygon.vertices.y[i]
         end
-        body:addShape(name, "PolygonShape", verts)
+        body:addFixture(name, "PolygonShape", verts)
     end,
 
     chain = function(body, name, chain)
@@ -171,17 +171,17 @@ local shapeTypes = {
                 -- vertices being to close
                 --del chain_vertices[-1]
 
-                body:addShape(name, "ChainShape", false, verts)
+                body:addFixture(name, "ChainShape", false, verts)
 
                 -- setAttr(fixture.chain, "hasNextVertex", shape, "m_hasNextVertex",)
                 -- setAttrVec(fixture.chain, "nextVertex", shape, "m_nextVertex",)
                 -- setAttr(fixture.chain, "hasPrevVertex", shape, "m_hasPrevVertex",)
                 -- setAttrVec(fixture.chain, "prevVertex", shape, "m_prevVertex")
             else
-                body:addShape(name, "ChainShape", false, verts)
+                body:addFixture(name, "ChainShape", false, verts)
             end
         else
-            body:addShape(name, "EdgeShape", verts[1], verts[2], verts[3], verts[4])
+            body:addFixture(name, "EdgeShape", verts[1], verts[2], verts[3], verts[4])
         end
     end
 }
