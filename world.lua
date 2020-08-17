@@ -110,8 +110,8 @@ function world:draw()
         v:draw()
     end
 
-    -- love.graphics.setLineWidth(0.01)
-    -- self.physworld:draw()
+    love.graphics.setLineWidth(0.01)
+    self.physworld:draw()
 
     self.camera:pop()
 end

@@ -1,6 +1,7 @@
 local borb = types.borb
 local bread = types.bread
 local crumbs = types.crumbs
+local featherProjectile = types.featherProjectile
 
 borb.graphic = love.graphics.newImage( "img/borb.png" )
 borb.angryeye = love.graphics.newImage( "img/borb_angryeye.png" )
@@ -54,10 +55,20 @@ function borb:initialize(x, y, radius)
     self.draw = self.drawAlive
 
     hook.add("keypressed", self)
+    hook.add("mousepressed", self)
 end
 
 function borb:keypressed()
     -- self:explode(0,-40)
+end
+
+function borb:mousepressed(x, y, button)
+    if button == 1 then
+        local mx, my = world.camera.transform:inverseTransformPoint(love.mouse.getPosition())
+        local diffx, diffy = mx - self.x, my - self.y
+        diffx, diffy = math.normalize(diffx, diffy)
+        world:addEntity(types.featherProjectile:new(self, self.x, self.y, diffx*50, diffy*50))
+    end
 end
 
 function borb:postSolve(other,contact,impulse)
@@ -88,14 +99,14 @@ function borb:thinkAlive()
         end
     end
 
-    self.particles:setSpeed(math.sqrt(self.dx^2 + self.dy^2)*0.5)
+    self.particles:setSpeed(math.length(self.dx, self.dy)*0.5)
     self.particles:setDirection(math.atan2(self.dy, self.dx))
 
     local mx, my = self.bread:getPos()
     local rx, ry = mx - self.x, my - self.y
     local mag = math.max(rx^2 + ry^2, 4)
     if mag<64 then
-        self.body:applyForce(rx/mag*500, ry/mag*500)
+        -- self.body:applyForce(rx/mag*500, ry/mag*500)
         local mdx, mdy = self.bread.body:getLinearVelocity()
         local trx, try = ry, -rx
         for i=1, 10 do
@@ -211,6 +222,44 @@ function borb:explode(velx, vely)
 end
 
 
+featherProjectile.feather = borb.feather
+featherProjectile.featherOriginX = borb.featherOriginX
+featherProjectile.featherOriginY = borb.featherOriginY
+function featherProjectile:initialize(borb, x, y, dx, dy)
+    self.borb = borb
+    self.draworder = 1
+    self.body = world.physworld:newRectangleCollider(x, y, 0.5, 0.5)
+    self.body:setType("dynamic")
+    self.body:setAngle(math.atan2(dx, dy))
+    self.body:setLinearVelocity(dx, dy)
+    self.body:setLinearDamping(0)
+    self.body:setAngularDamping(0)
+    self.body:setBullet(true)
+    self.body:setObject(self)
+    self.body:setCollisionClass("Player")
+    
+    local fixture = self.body.fixtures.Main
+    fixture:setFriction(10)
+    fixture:setRestitution(1)
+    
+    self.pd = util.newPDController(self.body, 300)
+end
+
+function featherProjectile:getPos()
+    return self.body:getPosition()
+end
+
+function featherProjectile:think()
+    local dx, dy = self.body:getLinearVelocity()
+    self.pd(0, 0, math.atan2(dx, dy), 0, 0, -self.body:getAngularVelocity())
+end
+
+function featherProjectile:draw()
+    local x, y = self.body:getPosition()
+    love.graphics.draw(self.feather, x, y, self.body:getAngle(), 0.005, 0.005, self.featherOriginX, self.featherOriginY)
+end
+
+
 
 bread.graphic = love.graphics.newImage( "img/bread.png" )
 bread.originx = bread.graphic:getWidth()*0.5
@@ -239,11 +288,11 @@ function bread:getPos()
 end
 
 function bread:think()
-    local tx, ty = world.camera.transform:inverseTransformPoint(love.mouse.getPosition())
+    local mx, my = world.camera.transform:inverseTransformPoint(love.mouse.getPosition())
     local x, y = self.body:getPosition()
     local dx, dy = self.body:getLinearVelocity()
     local bdx, bdy = self.borb.body:getLinearVelocity()
-    local diffx, diffy = tx - x, ty - y
+    local diffx, diffy = mx - x, my - y
     self.pd(diffx, diffy, 0, bdx-dx, bdy-dy, 0)
 end
 
@@ -290,7 +339,7 @@ function crumbs.crumbThink(crumb, tx, ty, tdx, tdy)
     local dirx, diry = tx - x, ty - y
     if dirx^2 + diry^2 < 1 then crumb.active = false return end
 
-    local dirlen = math.sqrt(dirx^2 + diry^2)
+    local dirlen = math.length(dirx, diry)
     local veldot = math.max((dirx*dx + diry*dy) / dirlen, 0)
     local tanvelx, tanvely = dx - dirx/dirlen*veldot, dy - diry/dirlen*veldot
     crumb.x, crumb.y, crumb.a = crumb.updateKutta(dirx*10 - tanvelx*5 + (tdx - dx)*0, diry*10 - tanvely*5 + (tdy - dy)*0, 0)

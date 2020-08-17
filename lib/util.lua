@@ -29,4 +29,13 @@ function util.rungeKutta(x, y, a, dx, dy, da)
         end
 end
 
+function math.normalize(x, y)
+    local l = math.sqrt(x^2+y^2)
+    return x/l, y/l
+end
+
+function math.length(x, y)
+    return math.sqrt(x^2+y^2)
+end
+
 return util

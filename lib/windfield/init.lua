@@ -524,28 +524,32 @@ function World.collisionPost(fixture_a, fixture_b, contact, ni1, ti1, ni2, ti2)
     end
 end
 
-function World:newCircleCollider(x, y, r, settings)
-    return self.wf.Collider.new(self, 'Circle', x, y, r, settings)
+function World:newCollider(x, y)
+    return self.wf.Collider.new(self, nil, x, y)
 end
 
-function World:newRectangleCollider(x, y, w, h, settings)
-    return self.wf.Collider.new(self, 'Rectangle', x, y, w, h, settings)
+function World:newCircleCollider(x, y, r)
+    return self.wf.Collider.new(self, 'Circle', x, y, r)
 end
 
-function World:newBSGRectangleCollider(x, y, w, h, corner_cut_size, settings)
-    return self.wf.Collider.new(self, 'BSGRectangle', x, y, w, h, corner_cut_size, settings)
+function World:newRectangleCollider(x, y, w, h)
+    return self.wf.Collider.new(self, 'Rectangle', x, y, w, h)
 end
 
-function World:newPolygonCollider(vertices, settings)
-    return self.wf.Collider.new(self, 'Polygon', vertices, settings)
+function World:newBSGRectangleCollider(x, y, w, h, corner_cut_size)
+    return self.wf.Collider.new(self, 'BSGRectangle', x, y, w, h, corner_cut_size)
 end
 
-function World:newLineCollider(x1, y1, x2, y2, settings)
-    return self.wf.Collider.new(self, 'Line', x1, y1, x2, y2, settings)
+function World:newPolygonCollider(vertices)
+    return self.wf.Collider.new(self, 'Polygon', vertices)
 end
 
-function World:newChainCollider(vertices, loop, settings)
-    return self.wf.Collider.new(self, 'Chain', vertices, loop, settings)
+function World:newLineCollider(x1, y1, x2, y2)
+    return self.wf.Collider.new(self, 'Line', x1, y1, x2, y2)
+end
+
+function World:newChainCollider(vertices, loop)
+    return self.wf.Collider.new(self, 'Chain', vertices, loop)
 end
 
 -- Internal AABB box2d query used before going for more specific and precise computations.

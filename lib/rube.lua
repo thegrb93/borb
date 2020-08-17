@@ -186,15 +186,15 @@ local shapeTypes = {
     end
 }
 
-local function createFixture(bodyObj, fixture)
+local function createFixture(body, fixture)
     for k, v in pairs(shapeTypes) do
         if fixture[k] then
-            v(bodyObj, fixture.name, fixture[k])
+            v(body, fixture.name, fixture[k])
             break
         end
     end
     
-    local fixtureObj = bodyObj.fixtures[fixture.name]
+    local fixtureObj = body.fixtures[fixture.name]
     if fixture.density then fixtureObj:setDensity(fixture.density) end
     if fixture.friction then fixtureObj:setFriction(fixture.friction) end
     if fixture.sensor then fixtureObj:setSensor(fixture.sensor) end
@@ -204,30 +204,26 @@ end
 local bodytypes = {
     "static","kinematic","dynamic"
 }
-local function createBody(world, body)
-    local x, y = vec(body.position)
-    local bodyObj = wf.Collider.new(
-        world, nil,
-        x, y
-    )
+local function createBody(world, bodydata)
+    local body = world:newCollider(vec(bodydata.position))
 
-    bodyObj:setType(bodytypes[body.type+1])
-    if body.angle then bodyObj:setAngle(body.angle) end
-    if body.angularDamping then bodyObj:setAngularDamping(body.angularDamping) end
-    if body.angularVelocity then bodyObj:setAngularVelocity(body.angularVelocity) end
-    if body.awake then bodyObj:setAwake(body.awake) end
-    if body.bullet then bodyObj:setBullet(body.bullet) end
-    if body.fixedRotation then bodyObj:setFixedRotation(body.fixedRotation) end
-    if body.linearDamping then bodyObj:setLinearDamping(body.linearDamping) end
-    if body.linearVelocity then bodyObj:setLinearVelocity(vec(body.linearVelocity)) end
-    if body.gravityScale then bodyObj:setGravityScale(body.gravityScale) end
-    if body["massData-I"] then bodyObj:setInertia(body["massData-I"]) end
+    body:setType(bodytypes[bodydata.type+1])
+    if bodydata.angle then body:setAngle(bodydata.angle) end
+    if bodydata.angularDamping then body:setAngularDamping(bodydata.angularDamping) end
+    if bodydata.angularVelocity then body:setAngularVelocity(bodydata.angularVelocity) end
+    if bodydata.awake then body:setAwake(bodydata.awake) end
+    if bodydata.bullet then body:setBullet(bodydata.bullet) end
+    if bodydata.fixedRotation then body:setFixedRotation(bodydata.fixedRotation) end
+    if bodydata.linearDamping then body:setLinearDamping(bodydata.linearDamping) end
+    if bodydata.linearVelocity then body:setLinearVelocity(vec(bodydata.linearVelocity)) end
+    if bodydata.gravityScale then body:setGravityScale(bodydata.gravityScale) end
+    if bodydata["massData-I"] then body:setInertia(bodydata["massData-I"]) end
 
-    for _, fixture in ipairs(body.fixture) do
-        createFixture(bodyObj, fixture)
+    for _, fixture in ipairs(bodydata.fixture) do
+        createFixture(body, fixture)
     end
 
-    return bodyObj
+    return body
 end
 
 return function(world, rube)
@@ -241,8 +237,8 @@ return function(world, rube)
 
     local bodies = {}
     if rube.body then
-        for id, body in pairs(rube.body) do
-            bodies[id] = createBody(world, body)
+        for id, bodydata in pairs(rube.body) do
+            bodies[id] = createBody(world, bodydata)
         end
     end
 
