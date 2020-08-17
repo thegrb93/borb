@@ -57,14 +57,14 @@ function borb:initialize(x, y, radius)
 end
 
 function borb:keypressed()
-    self:explode(0,-40)
+    -- self:explode(0,-40)
 end
 
 function borb:postSolve(other,contact,impulse)
-    if impulse>0.005 then
+    if impulse>50 then
         local x, y = contact:getPositions()
         self.particles:setPosition(x, y)
-        self.particles:emit(math.floor((impulse-0.005)*500))
+        self.particles:emit(math.floor((impulse-50)*50))
     end
     if other and other:isInstanceOf(types.spike) then
         local x, y = contact:getPositions()
@@ -95,7 +95,7 @@ function borb:thinkAlive()
     local rx, ry = mx - self.x, my - self.y
     local mag = math.max(rx^2 + ry^2, 4)
     if mag<64 then
-        self.body:applyForce(rx/mag*0.4, ry/mag*0.4)
+        self.body:applyForce(rx/mag*500, ry/mag*500)
         local mdx, mdy = self.bread.body:getLinearVelocity()
         local trx, try = ry, -rx
         for i=1, 10 do
@@ -316,7 +316,7 @@ end
 function crumbs:draw()
     for k, crumb in ipairs(self.crumbs) do
         if crumb.active then
-            love.graphics.draw(self.graphic, crumb.x, crumb.y, crumb.a, 0.01, 0.01, self.originx, self.originy)
+            love.graphics.draw(self.graphic, crumb.x, crumb.y, crumb.a, 0.005, 0.005, self.originx, self.originy)
         end
     end
 end
