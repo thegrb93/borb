@@ -63,7 +63,7 @@ function World.new(wf, xg, yg, sleep)
     self.query_debug_draw = {}
     self.collisionEventColliders = {}
 
-    love.physics.setMeter(32)
+    love.physics.setMeter(1)
     self.box2d_world = love.physics.newWorld(xg, yg, sleep) 
 
     return setmetatable(self, World)

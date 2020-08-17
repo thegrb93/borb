@@ -28,7 +28,7 @@ function borb:initialize(x, y, radius)
     
     local fixture = self.body.fixtures.Main
     fixture:setFriction(10)
-    fixture:setRestitution(1)
+    fixture:setRestitution(0.5)
     self.body:setPostSolve(function(collider_1, collider_2, contact, normal_impulse1, tangent_impulse1, normal_impulse2, tangent_impulse2)
         self:postSolve(collider_2:getObject(), contact, normal_impulse1)
     end)
@@ -66,7 +66,7 @@ function borb:postSolve(other,contact,impulse)
         self.particles:setPosition(x, y)
         self.particles:emit(math.floor((impulse-0.005)*500))
     end
-    if other and other:isInstanceOf(world.levelclasses.spike) then
+    if other and other:isInstanceOf(types.spike) then
         local x, y = contact:getPositions()
         self:explode(self.x - x, self.y - y)
     end
@@ -96,10 +96,12 @@ function borb:thinkAlive()
     local mag = math.max(rx^2 + ry^2, 4)
     if mag<64 then
         self.body:applyForce(rx/mag*0.4, ry/mag*0.4)
-        if math.random() > 1-(1-math.sqrt(mag)/8)*0.6 then
-            local mdx, mdy = self.bread.body:getLinearVelocity()
-            local trx, try = ry, -rx
-            self.crumbs:newCrumb(mx, my, math.random()*math.pi*2, mdx+(math.random()-0.5)*trx*10, mdy+(math.random()-0.5)*try*10, self.bread.body:getAngularVelocity())
+        local mdx, mdy = self.bread.body:getLinearVelocity()
+        local trx, try = ry, -rx
+        for i=1, 10 do
+            if math.random() > 1-(1-math.sqrt(mag)/8)*0.25 then
+                self.crumbs:addCrumb(mx, my, math.random()*math.pi*2, mdx+(math.random()-0.5)*trx*10, mdy+(math.random()-0.5)*try*10, self.bread.body:getAngularVelocity())
+            end
         end
     end
     
@@ -311,7 +313,7 @@ function crumbs:destroy()
     world:removeEntity(self)
 end
 
-function crumb:draw()
+function crumbs:draw()
     for k, crumb in ipairs(self.crumbs) do
         if crumb.active then
             love.graphics.draw(self.graphic, crumb.x, crumb.y, crumb.a, 0.01, 0.01, self.originx, self.originy)
