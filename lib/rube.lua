@@ -6,8 +6,8 @@ end
 
 local jointsTypes = {
     revolute = function(joint, bodyA, bodyB)
-        local x1,y1 = vec(joint.anchorA)
-        local x2,y2 = vec(joint.anchorB)
+        local x1,y1 = bodyA:getWorldPoint(vec(joint.anchorA))
+        local x2,y2 = bodyB:getWorldPoint(vec(joint.anchorB))
         local jointDef = love.physics.newRevoluteJoint(
             bodyA, bodyB,
             x1, y1,
@@ -28,8 +28,8 @@ local jointsTypes = {
     end,
 
     distance = function(joint, bodyA, bodyB)
-        local x1,y1 = vec(joint.anchorA)
-        local x2,y2 = vec(joint.anchorB)
+        local x1,y1 = bodyA:getWorldPoint(vec(joint.anchorA))
+        local x2,y2 = bodyB:getWorldPoint(vec(joint.anchorB))
         local jointDef = love.physics.newDistanceJoint(
             bodyA, bodyB,
             x1, y1,
@@ -45,9 +45,9 @@ local jointsTypes = {
     end,
 
     prismatic = function(joint, bodyA, bodyB)
-        local x1,y1 = vec(joint.anchorA)
-        local x2,y2 = vec(joint.anchorB)
-        local ax,ay = vec(joint.localAxisA)
+        local x1,y1 = bodyA:getWorldPoint(vec(joint.anchorA))
+        local x2,y2 = bodyB:getWorldPoint(vec(joint.anchorB))
+        local ax,ay = bodyA:getWorldVector(vec(joint.localAxisA))
         local jointDef = love.physics.newPrismaticJoint(
             bodyA, bodyB,
             x1, y1,
@@ -67,9 +67,9 @@ local jointsTypes = {
     end,
 
     wheel = function(joint, bodyA, bodyB)
-        local x1,y1 = vec(joint.anchorA)
-        local x2,y2 = vec(joint.anchorB)
-        local ax,ay = vec(joint.localAxisA)
+        local x1,y1 = bodyA:getWorldPoint(vec(joint.anchorA))
+        local x2,y2 = bodyB:getWorldPoint(vec(joint.anchorB))
+        local ax,ay = bodyA:getWorldVector(vec(joint.localAxisA))
         local jointDef = love.physics.newWheelJoint(
             bodyA, bodyB,
             x1, y1,
@@ -88,8 +88,8 @@ local jointsTypes = {
     end,
 
     rope = function(joint, bodyA, bodyB)
-        local x1,y1 = vec(joint.anchorA)
-        local x2,y2 = vec(joint.anchorB)
+        local x1,y1 = bodyA:getWorldPoint(vec(joint.anchorA))
+        local x2,y2 = bodyB:getWorldPoint(vec(joint.anchorB))
         local jointDef = love.physics.newRopeJoint(
             bodyA, bodyB,
             x1, y1,
@@ -112,6 +112,8 @@ local jointsTypes = {
     end,
 
     weld = function(joint, bodyA, bodyB)
+        local x1,y1 = bodyA:getWorldPoint(vec(joint.anchorA))
+        local x2,y2 = bodyB:getWorldPoint(vec(joint.anchorB))
         local jointDef = love.physics.newWeldJoint(
             bodyA, bodyB,
             x1, y1,
@@ -126,8 +128,8 @@ local jointsTypes = {
     end,
 
     friction = function(joint, bodyA, bodyB)
-        local x1,y1 = vec(joint.anchorA)
-        local x2,y2 = vec(joint.anchorB)
+        local x1,y1 = bodyA:getWorldPoint(vec(joint.anchorA))
+        local x2,y2 = bodyB:getWorldPoint(vec(joint.anchorB))
         local jointDef = love.physics.newFrictionJoint(
             bodyA, bodyB,
             x1, y1,

@@ -39,7 +39,7 @@ _[10]={type="distance",bodyB=1,collideConnected=true,anchorB=_[27],anchorA=_[28]
 _[9]={glTexCoordPointer=_[22],glDrawElements=_[23],scale=3,opacity=0.5,corners=_[24],body=-1,aspectScale=1,center=_[25],filter=1,file="borb.png",class="spawn",glVertexPointer=_[26]}
 _[8]={glTexCoordPointer=_[18],glDrawElements=_[19],scale=100,opacity=0.5,corners=_[20],body=1,aspectScale=1,center=0,filter=1,file="foreground.png",class="world",glVertexPointer=_[21]}
 _[7]={position=0,type=0,name="body0",linearVelocity=0,fixture=_[17],awake=true,angularVelocity=0,angle=0}
-_[6]={class="spring",type=2,["massData-mass"]=1.9585429430007939,linearVelocity=0,angularVelocity=0,customProperties=_[13],position=_[14],name="body1",["massData-I"]=3.6696658134460449,fixture=_[15],angle=0,["massData-center"]=_[16],awake=true,power=200}
+_[6]={class="spring",type=2,["massData-mass"]=1.9585429430007939,linearVelocity=0,angularVelocity=0,customProperties=_[13],position=_[14],name="body1",["massData-I"]=3.6696658134460449,fixture=_[15],angle=0,["massData-center"]=_[16],awake=true,power=50}
 _[5]={names=_[12]}
 _[4]={_[10],_[11]}
 _[3]={_[8],_[9]}

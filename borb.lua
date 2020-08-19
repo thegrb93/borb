@@ -111,7 +111,7 @@ function borb:thinkAlive()
     local rx, ry = mx - self.x, my - self.y
     local mag = math.max(rx^2 + ry^2, 4)
     if mag<64 then
-        -- self.body:applyForce(rx/mag*500, ry/mag*500)
+        self.body:applyForce(rx/mag*500, ry/mag*500)
         local mdx, mdy = self.bread.body:getLinearVelocity()
         local trx, try = ry, -rx
         for i=1, 10 do
