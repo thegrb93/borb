@@ -2,9 +2,7 @@ local wf = require("lib/windfield")
 local rube = require("lib/rube")
 
 local world = class("world")
-local levelclasses = {spawn = types.spawn, spike = types.spike}
-
-world.backgroundimg = love.graphics.newImage( "img/background.png" )
+world.backgroundimg = love.graphics.newImage("img/background.png")
 world.backgroundw = world.backgroundimg:getWidth()*0.5
 world.backgroundh = world.backgroundimg:getHeight()*0.5
 
@@ -13,7 +11,7 @@ function world:initialize()
     self.addents = {}
     self.rments = {}
     self.addedents = {}
-    self.ents = {} -- sorted by entity draworder
+    self.drawents = {} -- sorted by entity draworder
 end
 
 function world:loadLevel(level)
@@ -29,22 +27,35 @@ function world:loadLevel(level)
 
     if leveldata.image then
         for id, v in pairs(leveldata.image) do
-            if v.name == "world" then
-                self.foregroundimg = love.graphics.newImage( "img/" .. v.file )
+            if v.class == "world" then
+                self.foregroundimg = love.graphics.newImage("img/" .. v.file)
                 self.foregroundw = self.foregroundimg:getWidth()*0.5
                 self.foregroundh = self.foregroundimg:getHeight()*0.5
                 self.foregroundscale = v.scale / self.foregroundimg:getHeight()
-            else
-                local obj = levelclasses[v.name]
-                if obj then
-                    obj:new(v)
+            elseif v.class then
+                local meta = types[v.class]
+                if meta then
+                    self:addEntity(meta:new(v))
+                else
+                    error("Invalid type: " .. v.class)
                 end
             end
         end
     end
-    
-    self.player = types.borb:new(self.spawnpoint.x, self.spawnpoint.y, 1.5)
-    self:addEntity(self.player)
+    if leveldata.body then
+        for k, v in pairs(leveldata.body) do
+            if v.class then
+                local meta = types[v.class]
+                if meta then
+                    self:addEntity(meta:new(bodies[k], v))
+                else
+                    error("Invalid type: " .. v.class)
+                end
+            end
+        end
+    end
+
+    hook.call("worldloaded")
 end
 
 function world:addEntity(ent)
@@ -67,7 +78,7 @@ function world:draw()
     self.t = self.t + self.dt
     self.physworld:update(self.dt)
     scheduler:tick(self.t)
-    for _, v in ipairs(self.ents) do
+    for _, v in ipairs(self.drawents) do
         v:think()
     end
 
@@ -75,23 +86,27 @@ function world:draw()
     for ent in next, self.addents do
         self.addedents[ent] = true
         self.addents[ent] = nil
-        local found = false
-        for k, e in ipairs(self.ents) do
-            if ent.draworder <= e.draworder then
-                table.insert(self.ents, k, ent)
-                found = true
-                break
+        if ent.draw then
+            local found = false
+            for k, e in ipairs(self.drawents) do
+                if ent.draworder <= e.draworder then
+                    table.insert(self.drawents, k, ent)
+                    found = true
+                    break
+                end
             end
+            if not found then self.drawents[#self.drawents+1] = ent end
         end
-        if not found then self.ents[#self.ents+1] = ent end
     end
     for ent in next, self.rments do
         self.addedents[ent] = nil
         self.rments[ent] = nil
-        for k, e in ipairs(self.ents) do
-            if ent==e then
-                table.remove(self.ents, k)
-                break
+        if ent.draw then
+            for k, e in ipairs(self.drawents) do
+                if ent==e then
+                    table.remove(self.drawents, k)
+                    break
+                end
             end
         end
     end
@@ -106,7 +121,7 @@ function world:draw()
 
     self.camera:push()
     love.graphics.draw(self.foregroundimg, 0, 0, 0, self.foregroundscale, self.foregroundscale, self.foregroundw, self.foregroundh)
-    for _, v in ipairs(self.ents) do
+    for _, v in ipairs(self.drawents) do
         v:draw()
     end
 

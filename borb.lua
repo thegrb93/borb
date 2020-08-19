@@ -58,6 +58,11 @@ function borb:initialize(x, y, radius)
     hook.add("mousepressed", self)
 end
 
+function borb:destroy()
+    hook.remove("keypressed", self)
+    hook.remove("mousepressed", self)
+end
+
 function borb:keypressed()
     -- self:explode(0,-40)
 end

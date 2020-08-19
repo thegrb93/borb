@@ -226,25 +226,25 @@ local function createBody(world, bodydata)
     return body
 end
 
-return function(world, rube)
+return function(world, data)
     --[[world = b2.b2World(
-        autoClearForces=rube.autoClearForces,
-        continuousPhysics=rube.continuousPhysics,
-        gravity={rube.gravity.x,rube.gravity.y}
-        subStepping=rube.subStepping,
-        warmStarting=rube.warmStarting,
+        autoClearForces=data.autoClearForces,
+        continuousPhysics=data.continuousPhysics,
+        gravity={data.gravity.x,data.gravity.y}
+        subStepping=data.subStepping,
+        warmStarting=data.warmStarting,
     )]]
 
     local bodies = {}
-    if rube.body then
-        for id, bodydata in pairs(rube.body) do
+    if data.body then
+        for id, bodydata in pairs(data.body) do
             bodies[id] = createBody(world, bodydata)
         end
     end
 
     local joints = {}
-    if rube.joint then
-        for _, joint in pairs(rube.joint) do
+    if data.joint then
+        for _, joint in pairs(data.joint) do
             local create = jointsTypes[joint.type]
             if create then
                 joints[#joints+1] = create(joint, bodies[joint.bodyA+1].body, bodies[joint.bodyB+1].body)

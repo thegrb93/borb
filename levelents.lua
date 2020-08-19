@@ -1,7 +1,17 @@
 
 local spawn = types.spawn
 function spawn:initialize(data)
-    world.spawnpoint = {x = data.center.x, y = -data.center.y}
+    self.spawnpoint = {x = data.center.x, y = -data.center.y}
+    hook.add("worldloaded", self)
+end
+
+function spawn:destroy()
+    hook.remove("worldloaded", self)
+end
+
+function spawn:worldloaded()
+    world.player = types.borb:new(self.spawnpoint.x, self.spawnpoint.y, 1.5)
+    world:addEntity(world.player)
 end
 
 local spike = types.spike
@@ -15,13 +25,14 @@ function spike:draw(data)
 end
 
 local spring = types.spring
-function spring:initialize(data)
+function spring:initialize(body, data)
+    self.body = body
     self.power = data.power
     self.ready = true
     world:addEntity(self)
 
     local slider
-    for k, v in ipairs(self.body:getJoints()) do
+    for k, v in ipairs(body:getJoints()) do
         if v:getType()=="prismatic" then slider = v break end
     end
     if not slider then error("Spring entity without a slider joint!") end
@@ -29,8 +40,11 @@ function spring:initialize(data)
     self.dirx = ax * self.power
     self.diry = ay * self.power
 
-    self.body:setPostSolve(function(...)
-        self:postSolve(collider_2:getObject(), ...)
+    body:setPostSolve(function(collider_1, collider_2, ...)
+        local other = collider_2:getObject()
+        if other then
+            self:postSolve(other, ...)
+        end
     end)
 end
 
