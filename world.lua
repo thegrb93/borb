@@ -5,13 +5,23 @@ local world = class("world")
 world.backgroundimg = love.graphics.newImage("img/background.png")
 world.backgroundw = world.backgroundimg:getWidth()*0.5
 world.backgroundh = world.backgroundimg:getHeight()*0.5
+world.drawCategories = {
+    "background",
+    "foreground",
+    "gui"
+}
 
 function world:initialize()
     self.dt = 1/winmode.refreshrate
     self.addents = {}
     self.rments = {}
     self.addedents = {}
-    self.drawents = {} -- sorted by entity draworder
+    self.thinkents = {}
+    self.drawents = {}
+    for k, v in ipairs(self.drawCategories) do
+        self.drawents[k] = {}
+        world.drawCategories[v] = k
+    end
 end
 
 function world:loadLevel(level)
@@ -60,7 +70,6 @@ end
 
 function world:addEntity(ent)
     if self.addedents[ent] then error("Entity is already in entities list!") end
-    if ent.draworder == nil then ent.draworder = 0 end
     self.addents[ent] = true
 end
 
@@ -74,41 +83,35 @@ function world:removeEntity(ent)
 end
 
 function world:draw()
-    -- Update game logic
-    self.t = self.t + self.dt
-    self.physworld:update(self.dt)
-    scheduler:tick(self.t)
-    for _, v in ipairs(self.drawents) do
-        v:think()
-    end
-
     -- Update game entities
     for ent in next, self.addents do
         self.addedents[ent] = true
         self.addents[ent] = nil
+        if ent.think then
+            self.thinkents[#self.thinkents+1] = ent
+        end
         if ent.draw then
-            local found = false
-            for k, e in ipairs(self.drawents) do
-                if ent.draworder <= e.draworder then
-                    table.insert(self.drawents, k, ent)
-                    found = true
-                    break
-                end
-            end
-            if not found then self.drawents[#self.drawents+1] = ent end
+            local drawtbl = self.drawents[ent.drawCategory]
+            drawtbl[#drawtbl+1] = ent
         end
     end
     for ent in next, self.rments do
         self.addedents[ent] = nil
         self.rments[ent] = nil
-        if ent.draw then
-            for k, e in ipairs(self.drawents) do
-                if ent==e then
-                    table.remove(self.drawents, k)
-                    break
-                end
-            end
+        if ent.think then
+            for k, e in ipairs(self.thinkents) do if ent==e then table.remove(self.thinkents, k) break end end
         end
+        if ent.draw then
+            for k, e in ipairs(self.drawents[ent.drawCategory]) do if ent==e then table.remove(self.drawents, k) break end end
+        end
+    end
+
+    -- Update game logic
+    self.t = self.t + self.dt
+    self.physworld:update(self.dt)
+    scheduler:tick(self.t)
+    for _, ent in ipairs(self.thinkents) do
+        ent:think()
     end
 
     -- Draw game entities
@@ -121,8 +124,10 @@ function world:draw()
 
     self.camera:push()
     love.graphics.draw(self.foregroundimg, 0, 0, 0, self.foregroundscale, self.foregroundscale, self.foregroundw, self.foregroundh)
-    for _, v in ipairs(self.drawents) do
-        v:draw()
+    for _, tbl in ipairs(self.drawents) do
+        for _, ent in ipairs(tbl) do
+            ent:draw()
+        end
     end
 
     love.graphics.setLineWidth(0.01)

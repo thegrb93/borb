@@ -16,6 +16,7 @@ end
 
 local spike = types.spike
 function spike:initialize(data)
+    self.drawCategory = world.drawCategories.foreground
     self.x, self.y = data.center.x, -data.center.y
     world:addEntity(self)
 end
@@ -26,19 +27,19 @@ end
 
 local spring = types.spring
 function spring:initialize(body, data)
+    self.drawCategory = world.drawCategories.foreground
     self.body = body
     self.power = data.power
     self.ready = true
     world:addEntity(self)
+    self.body:setGravityScale(0)
 
     local slider
     for k, v in ipairs(body:getJoints()) do
         if v:getType()=="prismatic" then slider = v break end
     end
     if not slider then error("Spring entity without a slider joint!") end
-    local ax, ay = slider:getAxis()
-    self.dirx = ax * self.power
-    self.diry = ay * self.power
+    self.dirx, self.diry = slider:getAxis()
 
     body:setPostSolve(function(collider_1, collider_2, ...)
         local other = collider_2:getObject()
@@ -53,10 +54,14 @@ function spring:postSolve(other, contact, normal_impulse1, tangent_impulse1, nor
         self.ready = false
         scheduler:timer(1, function() self.ready = true end)
         
-        local othermass = other.body:getMass()
-        other.body:applyLinearImpulse(self.dirx * othermass, self.diry * othermass)
-        local selfmass = self.body:getMass()
-        self.body:applyLinearImpulse(self.dirx * selfmass, self.diry * selfmass)
+        local velx, vely = other.body:getLinearVelocity()
+        local dot = velx*self.dirx + vely*self.diry
+        
+        local otherAmount = other.body:getMass()*(self.power - dot + 5)
+        other.body:applyLinearImpulse(self.dirx * otherAmount, self.diry * otherAmount)
+
+        local selfAmount = self.body:getMass()*self.power
+        self.body:applyLinearImpulse(self.dirx * selfAmount, self.diry * selfAmount)
     end
 end
 

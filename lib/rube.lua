@@ -16,13 +16,13 @@ local jointsTypes = {
             joint.refAngle
         )
 
-        if joint.enableLimit then jointDef:setLimitsEnabled(joint.enableLimit) end
-        if joint.enableMotor then jointDef:setMotorEnabled(joint.enableMotor) end
-        if joint.jointSpeed then jointDef:setJointSpeed(joint.jointSpeed) end
-        if joint.lowerLimit then jointDef:setLowerLimit(joint.lowerLimit) end
-        if joint.maxMotorTorque then jointDef:setMaxMotorTorque(joint.maxMotorTorque) end
-        if joint.motorSpeed then jointDef:setMotorSpeed(joint.motorSpeed) end
-        if joint.upperLimit then jointDef:setUpperLimit(joint.upperLimit) end
+        if joint.enableLimit~=nil then jointDef:setLimitsEnabled(joint.enableLimit) end
+        if joint.enableMotor~=nil then jointDef:setMotorEnabled(joint.enableMotor) end
+        if joint.jointSpeed~=nil then jointDef:setJointSpeed(joint.jointSpeed) end
+        if joint.lowerLimit~=nil then jointDef:setLowerLimit(joint.lowerLimit) end
+        if joint.maxMotorTorque~=nil then jointDef:setMaxMotorTorque(joint.maxMotorTorque) end
+        if joint.motorSpeed~=nil then jointDef:setMotorSpeed(joint.motorSpeed) end
+        if joint.upperLimit~=nil then jointDef:setUpperLimit(joint.upperLimit) end
 
         return jointDef
     end,
@@ -37,9 +37,9 @@ local jointsTypes = {
             joint.collideConnected
         )
 
-        if joint.dampingRatio then jointDef:setDampingRatio(joint.dampingRatio) end
-        if joint.frequency then jointDef:setFrequency(joint.frequency) end
-        if joint.length then jointDef:setLength(joint.length) end
+        if joint.dampingRatio~=nil then jointDef:setDampingRatio(joint.dampingRatio) end
+        if joint.frequency~=nil then jointDef:setFrequency(joint.frequency) end
+        if joint.length~=nil then jointDef:setLength(joint.length) end
 
         return jointDef
     end,
@@ -56,12 +56,12 @@ local jointsTypes = {
             joint.collideConnected
         )
 
-        if joint.enableLimit then jointDef:setLimitsEnabled(joint.enableLimit) end
-        if joint.enableMotor then jointDef:setMotorEnabled(joint.enableMotor) end
-        if joint.lowerLimit then jointDef:setLowerLimit(joint.lowerLimit) end
-        if joint.maxMotorForce then jointDef:setMaxMotorForce(joint.maxMotorForce) end
-        if joint.motorSpeed then jointDef:setMotorSpeed(joint.motorSpeed) end
-        if joint.upperLimit then jointDef:setUpperLimit(joint.upperLimit) end
+        if joint.enableLimit~=nil then jointDef:setLimitsEnabled(joint.enableLimit) end
+        if joint.enableMotor~=nil then jointDef:setMotorEnabled(joint.enableMotor) end
+        if joint.lowerLimit~=nil then jointDef:setLowerLimit(joint.lowerLimit) end
+        if joint.maxMotorForce~=nil then jointDef:setMaxMotorForce(joint.maxMotorForce) end
+        if joint.motorSpeed~=nil then jointDef:setMotorSpeed(joint.motorSpeed) end
+        if joint.upperLimit~=nil then jointDef:setUpperLimit(joint.upperLimit) end
 
         return jointDef
     end,
@@ -78,11 +78,11 @@ local jointsTypes = {
             joint.collideConnected
         )
 
-        if joint.enableMotor then jointDef:setMotorEnabled(joint.enableMotor) end
-        if joint.maxMotorTorque then jointDef:setMaxMotorTorque(joint.maxMotorTorque) end
-        if joint.motorSpeed then jointDef:setMotorSpeed(joint.motorSpeed) end
-        if joint.springDampingRatio then jointDef:setSpringDampingRatio(joint.springDampingRatio) end
-        if joint.springFrequency then jointDef:setSpringFrequency(joint.springFrequency) end
+        if joint.enableMotor~=nil then jointDef:setMotorEnabled(joint.enableMotor) end
+        if joint.maxMotorTorque~=nil then jointDef:setMaxMotorTorque(joint.maxMotorTorque) end
+        if joint.motorSpeed~=nil then jointDef:setMotorSpeed(joint.motorSpeed) end
+        if joint.springDampingRatio~=nil then jointDef:setSpringDampingRatio(joint.springDampingRatio) end
+        if joint.springFrequency~=nil then jointDef:setSpringFrequency(joint.springFrequency) end
 
         return jointDef
     end,
@@ -121,8 +121,8 @@ local jointsTypes = {
             joint.collideConnected
         )
 
-        if joint.dampingRatio then jointDef:setDampingRatio(joint.dampingRatio) end
-        if joint.frequency then jointDef:setFrequency(joint.frequency) end
+        if joint.dampingRatio~=nil then jointDef:setDampingRatio(joint.dampingRatio) end
+        if joint.frequency~=nil then jointDef:setFrequency(joint.frequency) end
 
         return jointDef
     end,
@@ -137,8 +137,8 @@ local jointsTypes = {
             joint.collideConnected
         )
 
-        if joint.maxForce then jointDef:setMaxForce(joint.maxForce) end
-        if joint.maxTorque then jointDef:setMaxTorque(joint.maxTorque) end
+        if joint.maxForce~=nil then jointDef:setMaxForce(joint.maxForce) end
+        if joint.maxTorque~=nil then jointDef:setMaxTorque(joint.maxTorque) end
 
         return jointDef
     end
@@ -197,10 +197,10 @@ local function createFixture(body, fixture)
     end
     
     local fixtureObj = body.fixtures[fixture.name]
-    if fixture.density then fixtureObj:setDensity(fixture.density) end
-    if fixture.friction then fixtureObj:setFriction(fixture.friction) end
-    if fixture.sensor then fixtureObj:setSensor(fixture.sensor) end
-    if fixture.restitution then fixtureObj:setRestitution(fixture.restitution) end
+    if fixture.density~=nil then fixtureObj:setDensity(fixture.density) end
+    if fixture.friction~=nil then fixtureObj:setFriction(fixture.friction) end
+    if fixture.sensor~=nil then fixtureObj:setSensor(fixture.sensor) end
+    if fixture.restitution~=nil then fixtureObj:setRestitution(fixture.restitution) end
 end
 
 local bodytypes = {
@@ -210,16 +210,16 @@ local function createBody(world, bodydata)
     local body = world:newCollider(vec(bodydata.position))
 
     body:setType(bodytypes[bodydata.type+1])
-    if bodydata.angle then body:setAngle(bodydata.angle) end
-    if bodydata.angularDamping then body:setAngularDamping(bodydata.angularDamping) end
-    if bodydata.angularVelocity then body:setAngularVelocity(bodydata.angularVelocity) end
-    if bodydata.awake then body:setAwake(bodydata.awake) end
-    if bodydata.bullet then body:setBullet(bodydata.bullet) end
-    if bodydata.fixedRotation then body:setFixedRotation(bodydata.fixedRotation) end
-    if bodydata.linearDamping then body:setLinearDamping(bodydata.linearDamping) end
-    if bodydata.linearVelocity then body:setLinearVelocity(vec(bodydata.linearVelocity)) end
-    if bodydata.gravityScale then body:setGravityScale(bodydata.gravityScale) end
-    if bodydata["massData-I"] then body:setInertia(bodydata["massData-I"]) end
+    if bodydata.angle~=nil then body:setAngle(bodydata.angle) end
+    if bodydata.angularDamping~=nil then body:setAngularDamping(bodydata.angularDamping) end
+    if bodydata.angularVelocity~=nil then body:setAngularVelocity(bodydata.angularVelocity) end
+    if bodydata.awake~=nil then body:setAwake(bodydata.awake) end
+    if bodydata.bullet~=nil then body:setBullet(bodydata.bullet) end
+    if bodydata.fixedRotation~=nil then body:setFixedRotation(bodydata.fixedRotation) end
+    if bodydata.linearDamping~=nil then body:setLinearDamping(bodydata.linearDamping) end
+    if bodydata.linearVelocity~=nil then body:setLinearVelocity(vec(bodydata.linearVelocity)) end
+    if bodydata.gravityScale~=nil then body:setGravityScale(bodydata.gravityScale) end
+    if bodydata["massData-I"]~=nil then body:setInertia(bodydata["massData-I"]) end
 
     for _, fixture in ipairs(bodydata.fixture) do
         createFixture(body, fixture)

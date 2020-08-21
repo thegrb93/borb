@@ -29,13 +29,29 @@ function util.rungeKutta(x, y, a, dx, dy, da)
         end
 end
 
-function math.normalize(x, y)
+function math.normalizeVec(x, y)
     local l = math.sqrt(x^2+y^2)
     return x/l, y/l
 end
 
 function math.length(x, y)
     return math.sqrt(x^2+y^2)
+end
+
+function math.lengthSqr(x, y)
+    return x^2+y^2
+end
+
+function math.clamp(x, min, max)
+    return math.max(math.min(x, max), min)
+end
+
+function math.angnorm(x)
+    return (x + math.pi) % (math.pi*2) - math.pi
+end
+
+function math.vecToAng(x, y)
+    return math.atan2(x, -y)
 end
 
 return util
