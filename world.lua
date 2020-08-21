@@ -83,6 +83,14 @@ function world:removeEntity(ent)
 end
 
 function world:draw()
+    -- Update game logic
+    self.t = self.t + self.dt
+    self.physworld:update(self.dt)
+    scheduler:tick(self.t)
+    for _, ent in ipairs(self.thinkents) do
+        ent:think()
+    end
+
     -- Update game entities
     for ent in next, self.addents do
         self.addedents[ent] = true
@@ -102,16 +110,9 @@ function world:draw()
             for k, e in ipairs(self.thinkents) do if ent==e then table.remove(self.thinkents, k) break end end
         end
         if ent.draw then
-            for k, e in ipairs(self.drawents[ent.drawCategory]) do if ent==e then table.remove(self.drawents, k) break end end
+            local drawtbl = self.drawents[ent.drawCategory]
+            for k, e in ipairs(drawtbl) do if ent==e then table.remove(drawtbl, k) break end end
         end
-    end
-
-    -- Update game logic
-    self.t = self.t + self.dt
-    self.physworld:update(self.dt)
-    scheduler:tick(self.t)
-    for _, ent in ipairs(self.thinkents) do
-        ent:think()
     end
 
     -- Draw game entities

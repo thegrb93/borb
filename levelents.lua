@@ -52,7 +52,7 @@ end
 function spring:postSolve(other, contact, normal_impulse1, tangent_impulse1, normal_impulse2, tangent_impulse2)
     if self.ready then
         self.ready = false
-        scheduler:timer(1, function() self.ready = true end)
+        scheduler:timer(0.5, function() self.ready = true end)
         
         local velx, vely = other.body:getLinearVelocity()
         local dot = velx*self.dirx + vely*self.diry
