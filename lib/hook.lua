@@ -47,8 +47,7 @@ end
 function hooktbl:call(...)
     local node = self.hooks
     for i=1, self.nhooks do
-        local ret = node.func(...)
-        if ret~=nil then return ret end
+        node.func(...)
         node = node.next
     end
 end
@@ -56,8 +55,7 @@ end
 function hooktbloftype:call(...)
     local node = self.hooks
     for i=1, self.nhooks do
-        local ret = node.func(node.id, ...)
-        if ret~=nil then return ret end
+        node.func(node.id, ...)
         node = node.next
     end
 end

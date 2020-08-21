@@ -232,7 +232,7 @@ featherProjectile.featherOriginY = borb.featherOriginY
 function featherProjectile:initialize(borb, x, y, dx, dy)
     self.borb = borb
     self.drawCategory = world.drawCategories.foreground
-    self.body = world.physworld:newRectangleCollider(x, y, 0.5, 0.5)
+    self.body = world.physworld:newCircleCollider(x, y, 0.5)
     self.body:setType("dynamic")
     self.body:setAngle(math.vecToAng(dx, dy))
     self.body:setLinearVelocity(dx, dy)
