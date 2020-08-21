@@ -9,6 +9,7 @@ types = {
 	bread = class("bread"),
 	borb = class("borb"),
 	snake = class("snake"),
+	mosquito = class("mosquito"),
 	featherProjectile = class("featherProjectile"),
 	crumbs = class("crumbs"),
 	spawn = class("spawn"),
@@ -19,6 +20,8 @@ types = {
 
 require("world")
 require("borb")
+require("snake")
+require("mosquito")
 require("camera")
 require("levelents")
 

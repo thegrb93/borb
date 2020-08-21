@@ -15,8 +15,10 @@ function spawn:worldloaded()
 end
 
 local spike = types.spike
-function spike:initialize(data)
+function spike:initialize(body, data)
     self.drawCategory = world.drawCategories.foreground
+    self.body = body
+    self.body:setObject(self)
     self.x, self.y = data.center.x, -data.center.y
     world:addEntity(self)
 end
@@ -29,6 +31,7 @@ local spring = types.spring
 function spring:initialize(body, data)
     self.drawCategory = world.drawCategories.foreground
     self.body = body
+    self.body:setObject(self)
     self.power = data.power
     self.ready = true
     world:addEntity(self)
