@@ -6,16 +6,17 @@ util = require("lib/util")
 flux = require("lib/flux")
 
 types = {
-	bread = class("bread"),
-	borb = class("borb"),
-	snake = class("snake"),
-	mosquito = class("mosquito"),
-	featherProjectile = class("featherProjectile"),
-	crumbs = class("crumbs"),
-	spawn = class("spawn"),
-	spike = class("spike"),
-	spring = class("spring"),
-	camera = class("camera"),
+    bread = class("bread"),
+    borb = class("borb"),
+    featherProjectile = class("featherProjectile"),
+    crumbs = class("crumbs"),
+    snake = class("snake"),
+    mosquito = class("mosquito"),
+    bloodspray = class("bloodspray"),
+    spawn = class("spawn"),
+    spike = class("spike"),
+    spring = class("spring"),
+    camera = class("camera"),
 }
 
 require("world")

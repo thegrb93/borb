@@ -44,11 +44,8 @@ function spring:initialize(body, data)
     if not slider then error("Spring entity without a slider joint!") end
     self.dirx, self.diry = slider:getAxis()
 
-    body:setPostSolve(function(collider_1, collider_2, ...)
-        local other = collider_2:getObject()
-        if other then
-            self:postSolve(other, ...)
-        end
+    body:setPostSolve(function(collider_1, ...)
+        self:postSolve(...)
     end)
 end
 
@@ -57,11 +54,11 @@ function spring:postSolve(other, contact, normal_impulse1, tangent_impulse1, nor
         self.ready = false
         scheduler:timer(0.5, function() self.ready = true end)
         
-        local velx, vely = other.body:getLinearVelocity()
+        local velx, vely = other:getLinearVelocity()
         local dot = velx*self.dirx + vely*self.diry
         
-        local otherAmount = other.body:getMass()*(self.power - dot + 5)
-        other.body:applyLinearImpulse(self.dirx * otherAmount, self.diry * otherAmount)
+        local otherAmount = other:getMass()*(self.power - dot + 5)
+        other:applyLinearImpulse(self.dirx * otherAmount, self.diry * otherAmount)
 
         local selfAmount = self.body:getMass()*self.power
         self.body:applyLinearImpulse(self.dirx * selfAmount, self.diry * selfAmount)

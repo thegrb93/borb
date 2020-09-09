@@ -54,4 +54,13 @@ function math.vecToAng(x, y)
     return math.atan2(x, -y)
 end
 
+function math.randVecNorm()
+    local t = math.random()*(2*math.pi)
+    return math.cos(t), math.sin(t)
+end
+
+function math.randVecSquare()
+    return math.random()*2-1, math.random()*2-1
+end
+
 return util

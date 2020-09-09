@@ -27,7 +27,9 @@ end
 function world:loadLevel(level)
     self.t = 0
     self.physworld = wf.newWorld(0, 60, true)
+    self.physworld:addCollisionClass("World", {ignores = {}})
     self.physworld:addCollisionClass("Player", {ignores = {"Player"}})
+    self.physworld:addCollisionClass("Enemy", {ignores = {}})
 
     self.camera = types.camera:new()
     self.backcamera = types.camera:new()
@@ -55,11 +57,17 @@ function world:loadLevel(level)
     if leveldata.body then
         for k, v in pairs(leveldata.body) do
             if v.class then
-                local meta = types[v.class]
-                if meta then
-                    self:addEntity(meta:new(bodies[k], v))
+                if v.class == "world" then
+                    local body = bodies[k]
+                    body:setObject(self)
+                    body:setCollisionClass("World")
                 else
-                    error("Invalid type: " .. v.class)
+                    local meta = types[v.class]
+                    if meta then
+                        self:addEntity(meta:new(bodies[k], v))
+                    else
+                        error("Invalid type: " .. v.class)
+                    end
                 end
             end
         end
@@ -86,6 +94,7 @@ function world:draw()
     -- Update game logic
     self.t = self.t + self.dt
     self.physworld:update(self.dt)
+    flux.update(self.dt)
     scheduler:tick(self.t)
     for _, ent in ipairs(self.thinkents) do
         ent:think()

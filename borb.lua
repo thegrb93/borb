@@ -75,6 +75,9 @@ function borb:mousepressed(x, y, button)
         local diffx, diffy = math.normalizeVec(mx - self.x, my - self.y)
         if diffx~=diffx then diffx, diffy = 0, 1 end
         world:addEntity(types.featherProjectile:new(self, self.x, self.y, diffx*50, diffy*50))
+    elseif button == 2 then
+        local mx, my = world.camera.transform:inverseTransformPoint(love.mouse.getPosition())
+        world:addEntity(types.mosquito:new(mx, my))
     end
 end
 
@@ -118,7 +121,7 @@ function borb:thinkAlive()
         local trx, try = ry, -rx
         for i=1, 10 do
             if math.random() > 1-(1-math.sqrt(mag)/8)*0.25 then
-                self.crumbs:addCrumb(mx, my, math.random()*math.pi*2, mdx+(math.random()-0.5)*trx*10, mdy+(math.random()-0.5)*try*10, self.bread.body:getAngularVelocity())
+                -- self.crumbs:addCrumb(mx, my, math.random()*math.pi*2, mdx+(math.random()-0.5)*trx*10, mdy+(math.random()-0.5)*try*10, self.bread.body:getAngularVelocity())
             end
         end
     end
@@ -241,13 +244,23 @@ function featherProjectile:initialize(borb, x, y, dx, dy)
     self.body:setBullet(true)
     self.body:setObject(self)
     self.body:setCollisionClass("Player")
-    self.body:setPostSolve(function() self.collided = true end)
+    self.body:setPostSolve(function(collider_1, collider_2, contact, normal_impulse1, tangent_impulse1, normal_impulse2, tangent_impulse2)
+        self:postSolve(collider_2:getObject(), contact)
+    end)
     
     local fixture = self.body.fixtures.Main
     fixture:setFriction(10)
     fixture:setRestitution(1)
     
     self.pd = util.newPDController(self.body, 300)
+end
+
+function featherProjectile:postSolve(other, contact)
+    if other and other:isInstanceOf(types.mosquito) then
+        local x, y = contact:getPositions()
+        local xn, yn = contact:getNormal()
+        other:explode(x, y, xn, yn)
+    end
 end
 
 function featherProjectile:getPos()
