@@ -69,8 +69,9 @@ end
 
 function bloodspray.thinkDrip(blood)
     local x, y, a, dx, dy, da = blood.getKutta()
+	local hit = false
 
-    world.physworld.box2d_world:rayCast(x, y, x+dx*blood.dt, y+dy*blood.dt, function(fixture, x, y, xn, yn, fraction)
+    world.physworld.box2d_world:rayCast(x, y, x+dx*blood.dt*2, y+dy*blood.dt*2, function(fixture, x, y, xn, yn, fraction)
         local udata = fixture:getUserData()
         if udata and udata.collision_class and udata.collision_class == "World" then
             blood.x = x
@@ -78,12 +79,15 @@ function bloodspray.thinkDrip(blood)
             blood.a = math.vecToAng(xn, yn)
             blood.think = bloodspray.thinkPuddle
             blood.mesh = bloodspray.puddle
+			hit = true
             return 0
         end
         return -1
     end)
 
-    blood.x, blood.y, blood.a = blood.updateKutta(dx*-0.05 + blood.gx, dy*-0.05 + blood.gy, 0)
+	if not hit then
+		blood.x, blood.y, blood.a = blood.updateKutta(dx*-0.05 + blood.gx, dy*-0.05 + blood.gy, 0)
+	end
 end
 
 function bloodspray.thinkPuddle(blood)
