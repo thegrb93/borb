@@ -253,6 +253,7 @@ function featherProjectile:initialize(borb, x, y, dx, dy)
     fixture:setRestitution(1)
     
     self.pd = util.newPDController(self.body, 300)
+	self.collided = false
 end
 
 function featherProjectile:postSolve(other, contact)
@@ -261,6 +262,7 @@ function featherProjectile:postSolve(other, contact)
         local xn, yn = contact:getNormal()
         other:explode(x, y, xn, yn)
     end
+	self.collided = true
 end
 
 function featherProjectile:getPos()
