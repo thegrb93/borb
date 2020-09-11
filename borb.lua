@@ -281,7 +281,7 @@ end
 
 function featherProjectile:draw()
     local x, y = self.body:getPosition()
-    love.graphics.draw(self.feather, x, y, self.body:getAngle()+2.0, 0.01, 0.01, self.featherOriginX-50, self.featherOriginY+30)
+    love.graphics.draw(self.feather, x, y, self.body:getAngle()+2.3, 0.01, 0.01, self.featherOriginX-50, self.featherOriginY+30)
 end
 
 function featherProjectile:destroy()
