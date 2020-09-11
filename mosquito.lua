@@ -32,12 +32,21 @@ end
 function mosquito:draw()
 end
 
+local dripSize = 0.1
+local puddleW = 0.6
+local puddleH = 0.1
+bloodspray.drip = love.graphics.newMesh({{-dripSize, -dripSize}, {-dripSize, dripSize}, {dripSize, dripSize}, {dripSize, -dripSize}}, "fan", "static")
+bloodspray.puddle = love.graphics.newMesh({{-puddleW, -puddleH}, {-puddleW, puddleH}, {puddleW, puddleH}, {puddleW, -puddleH}}, "fan", "static")
+bloodspray.collideFilter = function(fixture)
+    local udata = fixture:getUserData()
+    return udata and udata.collision_class and udata.collision_class == "World"
+end
 
-bloodspray.drip = love.graphics.newMesh({{-0.1, -0.1}, {-0.1, 0.1}, {0.1, 0.1}, {0.1, -0.1}}, "fan", "static")
-bloodspray.puddle = love.graphics.newMesh({{-0.4, -0.05}, {-0.4, 0.05}, {0.4, 0.05}, {0.4, -0.05}}, "fan", "static")
 function bloodspray:initialize(x, y, dx, dy)
     self.drawCategory = world.drawCategories.foreground
     self.maxblood = 30
+    self.dt = world.dt
+    self.gx, self.gy = world.physworld:getGravity()
 
     self.bloodspray = {}
     for i=1, self.maxblood do
@@ -52,8 +61,6 @@ function bloodspray:initialize(x, y, dx, dy)
             mesh = bloodspray.drip,
         }
         blood.x, blood.y, blood.a = getKutta()
-        blood.dt = world.dt
-        blood.gx, blood.gy = world.physworld:getGravity()
         self.bloodspray[i] = blood
     end
     
@@ -63,34 +70,84 @@ end
 
 function bloodspray:think()
     for k, blood in ipairs(self.bloodspray) do
-        blood:think()
+        blood.think(self, blood)
     end
 end
 
-function bloodspray.thinkDrip(blood)
+function bloodspray:thinkDrip(blood)
     local x, y, a, dx, dy, da = blood.getKutta()
-	local hit = false
 
-    world.physworld.box2d_world:rayCast(x, y, x+dx*blood.dt*2, y+dy*blood.dt*2, function(fixture, x, y, xn, yn, fraction)
-        local udata = fixture:getUserData()
-        if udata and udata.collision_class and udata.collision_class == "World" then
-            blood.x = x
-            blood.y = y
-            blood.a = math.vecToAng(xn, yn)
-            blood.think = bloodspray.thinkPuddle
-            blood.mesh = bloodspray.puddle
-			hit = true
-            return 0
-        end
-        return -1
-    end)
-
-	if not hit then
-		blood.x, blood.y, blood.a = blood.updateKutta(dx*-0.05 + blood.gx, dy*-0.05 + blood.gy, 0)
-	end
+    local fixture, x, y, xn, yn, fraction = util.traceLine(x, y, x+dx*self.dt*2, y+dy*self.dt*2, bloodspray.collideFilter)
+    if fixture then
+        self:buildBlood(blood, x, y, xn, yn)
+    else
+        blood.x, blood.y, blood.a = blood.updateKutta(dx*-0.05 + self.gx, dy*-0.05 + self.gy, 0)
+    end
 end
 
-function bloodspray.thinkPuddle(blood)
+function bloodspray:buildBlood(blood, x, y, xn, yn)
+    blood.x = x
+    blood.y = y
+    blood.a = math.vecToAng(xn, yn)
+    blood.think = bloodspray.thinkPuddle
+    
+    local custom, leftW, rightW = false, puddleW, puddleW
+    local x2, y2 = x+xn*0.005, y+xn*0.005
+    do
+        local xn2, yn2 = math.rotVecCCW(xn, yn)
+        local hit, x3, y3, xn3, yn3, frac = util.traceLine(x2, y2, x2+xn2*puddleW, y2+yn2*puddleW, bloodspray.collideFilter)
+        if hit then
+            custom = true
+            leftW = puddleW*util.binarySearch(0, frac, 6, function(t)
+                local x4, y4 = x2+xn2*puddleW*t, y2+yn2*puddleW*t
+                local hit2 = util.traceLine(x4, y4, x4-xn*0.006, y4-xn*0.006, bloodspray.collideFilter)
+                return hit2~=nil
+            end)
+        else
+            local x4, y4 = x2+xn2*puddleW, y2+yn2*puddleW
+            local hit2 = util.traceLine(x4, y4, x4-xn*0.006, y4-xn*0.006, bloodspray.collideFilter)
+            if hit2==nil then
+                custom = true
+                leftW = puddleW*util.binarySearch(0, 1, 6, function(t)
+                    local x4, y4 = x2+xn2*puddleW*t, y2+yn2*puddleW*t
+                    local hit3 = util.traceLine(x4, y4, x4-xn*0.006, y4-xn*0.006, bloodspray.collideFilter)
+                    return hit3~=nil
+                end)
+            end
+        end
+    end
+    do
+        local xn2, yn2 = math.rotVecCW(xn, yn)
+        local hit, x3, y3, xn3, yn3, frac = util.traceLine(x2, y2, x2+xn2*puddleW, y2+yn2*puddleW, bloodspray.collideFilter)
+        if hit then
+            custom = true
+            rightW = puddleW*util.binarySearch(0, frac, 6, function(t)
+                local x4, y4 = x2+xn2*puddleW*t, y2+yn2*puddleW*t
+                local hit2 = util.traceLine(x4, y4, x4-xn*0.006, y4-xn*0.006, bloodspray.collideFilter)
+                return hit2~=nil
+            end)
+        else
+            local x4, y4 = x2+xn2*puddleW, y2+yn2*puddleW
+            local hit2 = util.traceLine(x4, y4, x4-xn*0.006, y4-xn*0.006, bloodspray.collideFilter)
+            if hit2==nil then
+                custom = true
+                rightW = puddleW*util.binarySearch(0, 1, 6, function(t)
+                    local x4, y4 = x2+xn2*puddleW*t, y2+yn2*puddleW*t
+                    local hit3 = util.traceLine(x4, y4, x4-xn*0.006, y4-xn*0.006, bloodspray.collideFilter)
+                    return hit3~=nil
+                end)
+            end
+        end
+    end
+    if custom then
+        blood.mesh = love.graphics.newMesh({{-leftW, -puddleH}, {-leftW, puddleH}, {rightW, puddleH}, {rightW, -puddleH}}, "fan", "static")
+        blood.custommesh = true
+    else
+        blood.mesh = bloodspray.puddle
+    end
+end
+
+function bloodspray:thinkPuddle()
 end
 
 function bloodspray:draw()
@@ -101,13 +158,11 @@ function bloodspray:draw()
     love.graphics.setColor( 1, 1, 1, 1 )
 end
 
-function bloodspray.drawDrip(blood)
-    love.graphics.push("transform")
-    love.graphics.rotate(blood.a)
-    love.graphics.rectangle("fill", blood.x-0.1, blood.y-0.1, 0.2, 0.2)
-    love.graphics.pop("transform")
-end
-
 function bloodspray:destroy()
     world:removeEntity(self)
+    for k, v in ipairs(self.bloodspray) do
+        if v.custommesh then
+            v.mesh:release()
+        end
+    end
 end

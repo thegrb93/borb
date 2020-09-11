@@ -27,6 +27,9 @@ function borb:initialize(x, y, radius)
     self.y, self.dy = y, 0
     self.angle, self.dangle = 0, 0
     self.radius = radius
+    self.drawRadius = radius
+    self.jumpRadius = self.radius*0.79
+    self.jumpSize = self.radius*0.5
     self.jumpNum = 8
     self.jumpSpeed = 100
     self.floofNum = 20
@@ -45,6 +48,8 @@ function borb:initialize(x, y, radius)
     self.body:setPostSolve(function(collider_1, collider_2, contact, normal_impulse1, tangent_impulse1, normal_impulse2, tangent_impulse2)
         self:postSolve(collider_2:getObject(), contact, normal_impulse1)
     end)
+    self.mass = self.body:getMass()
+    self.inertia = self.body:getInertia()
     
     self.bread = bread:new(self, x, y-1)
     world:addEntity(self.bread)
@@ -108,23 +113,16 @@ function borb:thinkAlive()
             self.jumping = false
         end
     end
+    self:jumpThink()
+
+    if love.keyboard.isDown("a") then
+        self.body:applyForce(math.min(-500 - self.dx*40, 0), 0)
+    elseif love.keyboard.isDown("d") then
+        self.body:applyForce(math.max(500 - self.dx*40, 0), 0)
+    end
 
     self.particles:setSpeed(math.length(self.dx, self.dy)*0.5)
     self.particles:setDirection(math.atan2(self.dy, self.dx))
-
-    local mx, my = self.bread:getPos()
-    local rx, ry = mx - self.x, my - self.y
-    local mag = math.max(math.lengthSqr(rx, ry), 4)
-    if mag<64 then
-        self.body:applyForce(rx/mag*500, ry/mag*500)
-        local mdx, mdy = self.bread.body:getLinearVelocity()
-        local trx, try = ry, -rx
-        for i=1, 10 do
-            if math.random() > 1-(1-math.sqrt(mag)/8)*0.25 then
-                -- self.crumbs:addCrumb(mx, my, math.random()*math.pi*2, mdx+(math.random()-0.5)*trx*10, mdy+(math.random()-0.5)*try*10, self.bread.body:getAngularVelocity())
-            end
-        end
-    end
     
     world.camera:setPos(self.x, self.y)
     world.camera:update()
@@ -134,21 +132,8 @@ function borb:thinkDead()
 end
 
 function borb:drawAlive()
-    local drawRadius
-    if self.jumping then
-        local maxR = 0
-        for i=1, self.jumpNum do
-            local jump = self.jumpEnts[i]
-            local x, y = jump.body:getWorldCenter()
-            local R = math.lengthSqr(self.x - x, self.y - y)
-            if R>maxR then maxR = R end
-        end
-        drawRadius = self.radius+math.sqrt(maxR)
-    else
-        drawRadius = self.radius
-    end
     love.graphics.push()
-    love.graphics.applyTransform(love.math.newTransform(self.x, self.y, self.angle, drawRadius/borb.originx, drawRadius/borb.originy, borb.originx, borb.originy))
+    love.graphics.applyTransform(love.math.newTransform(self.x, self.y, self.angle, self.drawRadius/borb.originx, self.drawRadius/borb.originy, borb.originx, borb.originy))
     love.graphics.draw(borb.graphic)
     if self.jumping then
         love.graphics.draw(borb.angryeye, 241, 83)
@@ -170,13 +155,15 @@ function borb:drawDead()
 end
 
 function borb:jump()
-    local jumpRadius = self.radius*0.79
+    local mass = self.mass/(1+self.jumpNum)
+    local inertia = self.inertia/(1+self.jumpNum)
+    self.body:setMass(mass)
+    self.body:setInertia(inertia)
     self.jumpEnts = {}
     for i=1, self.jumpNum do
-        local ang = 2*math.pi*i/self.jumpNum
-        local body = {}
-        body = world.physworld:newCircleCollider(self.x, self.y, jumpRadius)
-        body:setMass(0.5)
+        local body = world.physworld:newCircleCollider(self.x, self.y, self.jumpRadius)
+        body:setMass(mass)
+        body:setInertia(inertia)
         body:setInertia(0.5)
         body:setType("dynamic")
         body:setLinearDamping(0)
@@ -186,22 +173,40 @@ function borb:jump()
         body:setObject(self)
         body.fixtures.Main:setFriction(10)
         body.fixtures.Main:setRestitution(0.2)
-        self.jumpEnts[i] = body
 
+        local ang = 2*math.pi*i/self.jumpNum
         local joint = love.physics.newPrismaticJoint(self.body.body, body.body, self.x, self.y, self.x, self.y, math.cos(ang), math.sin(ang), false)
         joint:setLimitsEnabled(true)
-        joint:setLimits(0, jumpRadius*0.5)
+        joint:setLimits(0, self.jumpSize)
         joint:setMotorEnabled(true)
-        joint:setMotorSpeed(self.jumpSpeed)
+        joint:setMotorSpeed(self.jumpSpeed*10)
         joint:setMaxMotorForce(200)
+        
+        self.jumpEnts[i] = {body = body, joint = joint}
+    end
+end
+
+function borb:jumpThink()
+    if self.jumping then
+        local maxR = 0
+        for i, jump in ipairs(self.jumpEnts) do
+            local x, y = jump.body:getWorldCenter()
+            local R = math.lengthSqr(self.x - x, self.y - y)
+            jump.joint:setMaxMotorForce((self.jumpSize^2 - R)*3000)
+            if R>maxR then maxR = R end
+        end
+        self.drawRadius = self.radius+math.sqrt(maxR)
+    else
+        self.drawRadius = self.radius
     end
 end
 
 function borb:endJump()
-    for i=1, self.jumpNum do
-        local body = self.jumpEnts[i]
-        body:destroy()
+    for i, jump in ipairs(self.jumpEnts) do
+        jump.body:destroy()
     end
+    self.body:setMass(self.mass)
+    self.body:setInertia(self.inertia)
 end
 
 function borb:explode(velx, vely)
@@ -253,7 +258,7 @@ function featherProjectile:initialize(borb, x, y, dx, dy)
     fixture:setRestitution(1)
     
     self.pd = util.newPDController(self.body, 300)
-	self.collided = false
+    self.collided = false
 end
 
 function featherProjectile:postSolve(other, contact)
@@ -262,7 +267,7 @@ function featherProjectile:postSolve(other, contact)
         local xn, yn = contact:getNormal()
         other:explode(x, y, xn, yn)
     end
-	self.collided = true
+    self.collided = true
 end
 
 function featherProjectile:getPos()
