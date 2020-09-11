@@ -41,7 +41,7 @@ function borb:initialize(x, y, radius)
     self.body:setBullet(true)
     self.body:setObject(self)
     self.body:setCollisionClass("Player")
-    
+
     local fixture = self.body.fixtures.Main
     fixture:setFriction(10)
     fixture:setRestitution(0.5)
@@ -50,12 +50,12 @@ function borb:initialize(x, y, radius)
     end)
     self.mass = self.body:getMass()
     self.inertia = self.body:getInertia()
-    
+
     self.bread = bread:new(self, x, y-1)
     world:addEntity(self.bread)
     self.crumbs = crumbs:new(self.body)
     world:addEntity(self.crumbs)
-    
+
     self.think = self.thinkAlive
     self.draw = self.drawAlive
 
@@ -121,9 +121,23 @@ function borb:thinkAlive()
         self.body:applyForce(math.max(500 - self.dx*40, 0), 0)
     end
 
+    -- local mx, my = self.bread:getPos()
+    -- local rx, ry = mx - self.x, my - self.y
+    -- local mag = math.max(math.lengthSqr(rx, ry), 4)
+    -- if mag<64 then
+        -- self.body:applyForce(rx/mag*500, ry/mag*500)
+        -- local mdx, mdy = self.bread.body:getLinearVelocity()
+        -- local trx, try = ry, -rx
+        -- for i=1, 10 do
+            -- if math.random() > 1-(1-math.sqrt(mag)/8)*0.25 then
+                -- self.crumbs:addCrumb(mx, my, math.random()*math.pi*2, mdx+(math.random()-0.5)*trx*10, mdy+(math.random()-0.5)*try*10, self.bread.body:getAngularVelocity())
+            -- end
+        -- end
+    -- end
+
     self.particles:setSpeed(math.length(self.dx, self.dy)*0.5)
     self.particles:setDirection(math.atan2(self.dy, self.dx))
-    
+
     world.camera:setPos(self.x, self.y)
     world.camera:update()
 end
@@ -139,7 +153,7 @@ function borb:drawAlive()
         love.graphics.draw(borb.angryeye, 241, 83)
     end
     love.graphics.pop()
-    
+
     self.particles:update(world.dt)
     love.graphics.draw(self.particles)
 end
@@ -181,7 +195,7 @@ function borb:jump()
         joint:setMotorEnabled(true)
         joint:setMotorSpeed(self.jumpSpeed*10)
         joint:setMaxMotorForce(200)
-        
+
         self.jumpEnts[i] = {body = body, joint = joint}
     end
 end
@@ -252,11 +266,11 @@ function featherProjectile:initialize(borb, x, y, dx, dy)
     self.body:setPostSolve(function(collider_1, collider_2, contact, normal_impulse1, tangent_impulse1, normal_impulse2, tangent_impulse2)
         self:postSolve(collider_2:getObject(), contact)
     end)
-    
+
     local fixture = self.body.fixtures.Main
     fixture:setFriction(10)
     fixture:setRestitution(1)
-    
+
     self.pd = util.newPDController(self.body, 300)
     self.collided = false
 end
@@ -304,11 +318,11 @@ function bread:initialize(borb, x, y)
     self.body:setObject(self)
     self.body:setCollisionClass("Player")
     self.body:setGravityScale(0)
-    
+
     local fixture = self.body.fixtures.Main
     fixture:setFriction(10)
     fixture:setRestitution(1)
-    
+
     self.pd = util.newPDController(self.body, 300)
 end
 
