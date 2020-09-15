@@ -276,10 +276,10 @@ function featherProjectile:initialize(borb, x, y, dx, dy)
 end
 
 function featherProjectile:postSolve(other, contact)
-    if other and other:isInstanceOf(types.mosquito) then
+    if other and other.onDamage then
         local x, y = contact:getPositions()
         local xn, yn = contact:getNormal()
-        other:explode(x, y, xn, yn)
+        other:onDamage(x, y, xn, yn)
     end
     self.collided = true
 end

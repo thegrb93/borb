@@ -72,7 +72,7 @@ end
 function spring:draw()
     local x1, y1, x2, y2 = self.distance:getAnchors()
     util.drawBeam(x1, y1, x2, y2, 0, 0, 1, 1, 1.5, spring.graphic)
-    love.graphics.setColor(0.8, 0.06, 0.06, 1)
+    love.graphics.setColor(0.7, 0.1, 0.1, 1)
     love.graphics.polygon("fill", self.body:getWorldPoints(self.body.shapes.fixture1:getPoints()))
     love.graphics.setColor(1, 1, 1, 1)
 end

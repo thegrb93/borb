@@ -845,6 +845,14 @@ function Collider:getObject()
     return self.object
 end
 
+function Collider:getState()
+    local x, y = self:getPosition()
+    local a = self:getAngle()
+    local dx, dy = self:getLinearVelocity()
+    local da = self:getAngularVelocity()
+    return x, y, a, dx, dy, da
+end
+
 function Collider:addFixture(name, shape_type, ...)
     if self.shapes[name] or self.fixtures[name] then error("Shape/fixture " .. name .. " already exists.") end
     local shape = love.physics['new' .. shape_type](...)
