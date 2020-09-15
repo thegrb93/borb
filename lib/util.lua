@@ -57,6 +57,17 @@ function util.traceLine(x1, y1, x2, y2, filter)
     return fixture, x, y, xn, yn, fraction
 end
 
+local beamMesh = love.graphics.newMesh(4)
+function util.drawBeam(x1, y1, x2, y2, u1, v1, u2, v2, width, texture)
+    local tx, ty = math.normalizeVec(math.rotVecCCW(x2 - x1, y2 - y1))
+    width = width * 0.5
+    tx = tx * width
+    ty = ty * width
+    beamMesh:setVertices({{x1 + tx, y1 + ty, u1, v1}, {x2 + tx, y2 + ty, u2, v1}, {x2 - tx, y2 - ty, u2, v2}, {x1 - tx, y1 - ty, u1, v2}})
+    beamMesh:setTexture(texture)
+    love.graphics.draw(beamMesh)
+end
+
 function math.normalizeVec(x, y)
     local l = math.sqrt(x^2+y^2)
     return x/l, y/l

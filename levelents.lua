@@ -28,6 +28,7 @@ function spike:draw(data)
 end
 
 local spring = types.spring
+spring.graphic = love.graphics.newImage( "img/spring.png" )
 function spring:initialize(body, data)
     self.drawCategory = world.drawCategories.foreground
     self.body = body
@@ -37,12 +38,15 @@ function spring:initialize(body, data)
     world:addEntity(self)
     self.body:setGravityScale(0)
 
-    local slider
+    local slider, distance
     for k, v in ipairs(body:getJoints()) do
-        if v:getType()=="prismatic" then slider = v break end
+        if v:getType()=="prismatic" then slider = v end
+        if v:getType()=="distance" then distance = v end
     end
     if not slider then error("Spring entity without a slider joint!") end
+    if not distance then error("Spring entity without a distance joint!") end
     self.dirx, self.diry = slider:getAxis()
+    self.distance = distance
 
     body:setPostSolve(function(collider_1, ...)
         self:postSolve(...)
@@ -65,6 +69,10 @@ function spring:postSolve(other, contact, normal_impulse1, tangent_impulse1, nor
     end
 end
 
-function spike:draw(data)
-    
+function spring:draw()
+    local x1, y1, x2, y2 = self.distance:getAnchors()
+    util.drawBeam(x1, y1, x2, y2, 0, 0, 1, 1, 1.5, spring.graphic)
+    love.graphics.setColor(0.8, 0.06, 0.06, 1)
+    love.graphics.polygon("fill", self.body:getWorldPoints(self.body.shapes.fixture1:getPoints()))
+    love.graphics.setColor(1, 1, 1, 1)
 end
