@@ -1,6 +1,17 @@
 local mosquito = types.mosquito
 local bloodspray = types.bloodspray
 
+mosquito.graphic = love.graphics.newImage( "img/mosquito.png" )
+mosquito.graphicw = mosquito.graphic:getWidth()
+mosquito.graphich = mosquito.graphic:getHeight()
+mosquito.graphicmap = {
+    maxt = 0.004,
+    {t = 0.000, u1 = 0, v1 = 0, u2 = 50/mosquito.graphicw, v2 = 50/mosquito.graphich},
+    {t = 0.001, u1 = 0, v1 = 0, u2 = 50/mosquito.graphicw, v2 = 50/mosquito.graphich},
+    {t = 0.002, u1 = 0, v1 = 0, u2 = 50/mosquito.graphicw, v2 = 50/mosquito.graphich},
+    {t = 0.003, u1 = 0, v1 = 0, u2 = 50/mosquito.graphicw, v2 = 50/mosquito.graphich},
+}
+mosquito.sprite = animatedSpriteBlurred:new(mosquito.graphic, mosquito.graphicmap)
 function mosquito:initialize(x, y)
     self.drawCategory = world.drawCategories.foreground
     
@@ -69,7 +80,7 @@ function mosquito:chaseThink()
 
     local pl = world.player
     local dx, dy = math.normalizeVec(pl.x - self.x, pl.y - self.y)
-    self.targetx, self.targety = self.x + dx, self.y + dy
+    self.targetx, self.targety = self.x + dx*3, self.y + dy*3
 
     local tx, ty = math.rotVecCW(dx, dy)
     local wave = math.sin(world.t*5)*5
@@ -86,6 +97,7 @@ end
 
 function mosquito:aliveDraw()
     love.graphics.circle("fill", self.x, self.y, 1)
+    mosquito.sprite:draw(world.t, world.dt)
 end
 
 function mosquito:deadDraw()

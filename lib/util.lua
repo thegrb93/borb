@@ -81,6 +81,10 @@ function math.lengthSqr(x, y)
     return x^2+y^2
 end
 
+function math.dot(x1, y1, x2, y2)
+    return x1*x2 + y1*y2
+end
+
 function math.clamp(x, min, max)
     return math.max(math.min(x, max), min)
 end
@@ -114,5 +118,89 @@ function math.rotVec(x, y, a)
     local c, s = math.cos(a), math.sin(a)
     return c*x + s*y, c*y - s*x
 end
+
+animatedSprite = class("animatedSprite")
+animatedSpriteBlurred = class("animatedSpriteBlurred", animatedSprite)
+function animatedSprite:initialize(img, map)
+    self.map = map
+    self.meshes = {}
+    self.maxt = map.maxt
+    for k, v in ipairs(map) do
+        local mesh = love.graphics.newMesh({{-0.5, -0.5, v.u1, v.v1}, {0.5, -0.5, v.u2, v.v1}, {0.5, 0.5, v.u2, v.v2}, {-0.5, 0.5, v.u1, v.v2}}, "fan", "static")
+        mesh:setTexture(img)
+        self.meshes[k] = mesh
+    end
+end
+
+function animatedSprite:destroy()
+    for k, v in ipairs(self.meshes) do
+        v:release()
+    end
+end
+
+function animatedSprite:findMesh(t)
+    t = t % self.maxt
+    for k, v in ipairs(map) do
+        if t < v.t then
+            return self.meshes[k-1]
+        end
+    end
+    return self.meshes[#self.meshes]
+end
+
+function animatedSprite:draw(t, ...)
+    love.graphics.draw(self:findMesh(t), ...)
+end
+
+function animatedSpriteBlurred:findMeshes(t, tlen)
+    t = (t - tlen) % self.maxt
+    local tleft = tlen
+    local weights = {}
+    local pos = #map
+    for k, v in ipairs(map) do
+        if t < v.t then
+            pos = k-1
+            break
+        end
+    end
+    do
+        local nextp = (pos % #self.map) + 1
+        local dt = math.min((self.map[nextp].t - t) % self.maxt, tleft)
+        weights[pos] = dt
+        tleft = tleft - dt
+        pos = nextp
+    end
+
+    while tleft>0 do
+        local nextp = (pos % #self.map) + 1
+        local dt = math.min((self.map[nextp].t - self.map[pos].t) % self.maxt, tleft)
+        weights[pos] = (weights[pos] or 0) + dt
+        tleft = tleft - dt
+        pos = nextp
+    end
+
+    local meshes = {}
+    for k, v in pairs(weights) do
+        meshes[#meshes+1] = {mesh = self.meshes[k], weight = v}
+    end
+    local alpha = 1
+    for i=#meshes, 2, -1 do
+        local val = (meshes[i].weight / tlen) * alpha
+        meshes[i].alpha = val
+        alpha = alpha / (1 - val)
+    end
+    meshes[1].alpha = 1
+    return meshes
+end
+
+function animatedSpriteBlurred:draw(t, tlen, ...)
+    for k, v in ipairs(self:findMeshes(t, tlen)) do
+        love.graphics.setColor( 1, 1, 1, v.alpha )
+        love.graphics.draw(v.mesh, ...)
+    end
+    love.graphics.setColor( 1, 1, 1, 1 )
+end
+
+
 
 return util

@@ -23,9 +23,6 @@ borb.particles:setEmissionArea("ellipse", 1, 0.5, 0, false)
 borb.particles:setSpread(0.6)
 function borb:initialize(x, y, radius)
     self.drawCategory = world.drawCategories.foreground
-    self.x, self.dx = x, 0
-    self.y, self.dy = y, 0
-    self.angle, self.dangle = 0, 0
     self.radius = radius
     self.drawRadius = radius
     self.jumpRadius = self.radius*0.79
@@ -41,6 +38,7 @@ function borb:initialize(x, y, radius)
     self.body:setBullet(true)
     self.body:setObject(self)
     self.body:setCollisionClass("Player")
+    self.x, self.y, self.a, self.dx, self.dy, self.da = self.body:getState()
 
     local fixture = self.body.fixtures.Main
     fixture:setFriction(10)
@@ -99,9 +97,7 @@ function borb:postSolve(other,contact,impulse)
 end
 
 function borb:thinkAlive()
-    self.x, self.y = self.body:getWorldCenter()
-    self.dx, self.dy = self.body:getLinearVelocity()
-    self.angle = self.body:getAngle()
+    self.x, self.y, self.a, self.dx, self.dy, self.da = self.body:getState()
     if love.keyboard.isDown("space") then
         if not self.jumping then
             self:jump()
@@ -116,9 +112,9 @@ function borb:thinkAlive()
     self:jumpThink()
 
     if love.keyboard.isDown("a") then
-        self.body:applyForce(math.min(-500 - self.dx*40, 0), 0)
+        self.body:applyForce(math.min(-500 - self.dx*40, -50), 0)
     elseif love.keyboard.isDown("d") then
-        self.body:applyForce(math.max(500 - self.dx*40, 0), 0)
+        self.body:applyForce(math.max(500 - self.dx*40, 50), 0)
     end
 
     -- local mx, my = self.bread:getPos()
@@ -147,7 +143,7 @@ end
 
 function borb:drawAlive()
     love.graphics.push()
-    love.graphics.applyTransform(love.math.newTransform(self.x, self.y, self.angle, self.drawRadius/borb.originx, self.drawRadius/borb.originy, borb.originx, borb.originy))
+    love.graphics.applyTransform(love.math.newTransform(self.x, self.y, self.a, self.drawRadius/borb.originx, self.drawRadius/borb.originy, borb.originx, borb.originy))
     love.graphics.draw(borb.graphic)
     if self.jumping then
         love.graphics.draw(borb.angryeye, 241, 83)
@@ -384,7 +380,7 @@ function crumbs.crumbThink(crumb, tx, ty, tdx, tdy)
     if dirlenSqr < 1 then crumb.active = false return end
 
     local dirlen = math.sqrt(dirlenSqr)
-    local veldot = math.max((dirx*dx + diry*dy) / dirlen, 0)
+    local veldot = math.max(math.dot(dirx, diry, dx, dy) / dirlen, 0)
     local tanvelx, tanvely = dx - dirx/dirlen*veldot, dy - diry/dirlen*veldot
     crumb.x, crumb.y, crumb.a = crumb.updateKutta(dirx*10 - tanvelx*5 + (tdx - dx)*0, diry*10 - tanvely*5 + (tdy - dy)*0, 0)
 end
