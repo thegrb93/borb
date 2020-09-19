@@ -1,17 +1,17 @@
 local mosquito = types.mosquito
 local bloodspray = types.bloodspray
 
-mosquito.graphic = love.graphics.newImage( "img/mosquito.png" )
-mosquito.graphicw = mosquito.graphic:getWidth()
-mosquito.graphich = mosquito.graphic:getHeight()
-mosquito.graphicmap = {
-    maxt = 0.004,
-    {t = 0.000, u1 = 0, v1 = 0, u2 = 50/mosquito.graphicw, v2 = 50/mosquito.graphich},
-    {t = 0.001, u1 = 0, v1 = 0, u2 = 50/mosquito.graphicw, v2 = 50/mosquito.graphich},
-    {t = 0.002, u1 = 0, v1 = 0, u2 = 50/mosquito.graphicw, v2 = 50/mosquito.graphich},
-    {t = 0.003, u1 = 0, v1 = 0, u2 = 50/mosquito.graphicw, v2 = 50/mosquito.graphich},
-}
-mosquito.sprite = animatedSpriteBlurred:new(mosquito.graphic, mosquito.graphicmap)
+-- mosquito.graphic = love.graphics.newImage( "img/mosquito.png" )
+-- mosquito.graphicw = mosquito.graphic:getWidth()
+-- mosquito.graphich = mosquito.graphic:getHeight()
+-- mosquito.graphicmap = {
+    -- maxt = 0.004,
+    -- {t = 0.000, u1 = 0, v1 = 0, u2 = 50/mosquito.graphicw, v2 = 50/mosquito.graphich},
+    -- {t = 0.001, u1 = 0, v1 = 0, u2 = 50/mosquito.graphicw, v2 = 50/mosquito.graphich},
+    -- {t = 0.002, u1 = 0, v1 = 0, u2 = 50/mosquito.graphicw, v2 = 50/mosquito.graphich},
+    -- {t = 0.003, u1 = 0, v1 = 0, u2 = 50/mosquito.graphicw, v2 = 50/mosquito.graphich},
+-- }
+-- mosquito.sprite = animatedSpriteBlurred:new(mosquito.graphic, mosquito.graphicmap)
 function mosquito:initialize(x, y)
     self.drawCategory = world.drawCategories.foreground
     
@@ -97,7 +97,7 @@ end
 
 function mosquito:aliveDraw()
     love.graphics.circle("fill", self.x, self.y, 1)
-    mosquito.sprite:draw(world.t, world.dt)
+    -- mosquito.sprite:draw(world.t, world.dt, self.x, self.y, self.a, 50, 50)
 end
 
 function mosquito:deadDraw()
@@ -167,55 +167,47 @@ function bloodspray:buildBlood(blood, x, y, xn, yn)
     local x2, y2 = x+xn*0.005, y+xn*0.005
     do
         local xn2, yn2 = math.rotVecCCW(xn, yn)
-        local hit, x3, y3, xn3, yn3, frac = util.traceLine(x2, y2, x2+xn2*puddleW, y2+yn2*puddleW, bloodspray.collideFilter)
-        if hit then
+        local W = self:findBloodEdge(x2, y2, xn, yn, xn2, yn2)
+        if W then
             custom = true
-            leftW = puddleW*util.binarySearch(0, frac, 6, function(t)
-                local x4, y4 = x2+xn2*puddleW*t, y2+yn2*puddleW*t
-                local hit2 = util.traceLine(x4, y4, x4-xn*0.006, y4-xn*0.006, bloodspray.collideFilter)
-                return hit2~=nil
-            end)
-        else
-            local x4, y4 = x2+xn2*puddleW, y2+yn2*puddleW
-            local hit2 = util.traceLine(x4, y4, x4-xn*0.006, y4-xn*0.006, bloodspray.collideFilter)
-            if hit2==nil then
-                custom = true
-                leftW = puddleW*util.binarySearch(0, 1, 6, function(t)
-                    local x4, y4 = x2+xn2*puddleW*t, y2+yn2*puddleW*t
-                    local hit3 = util.traceLine(x4, y4, x4-xn*0.006, y4-xn*0.006, bloodspray.collideFilter)
-                    return hit3~=nil
-                end)
-            end
+            leftW = W
         end
     end
     do
         local xn2, yn2 = math.rotVecCW(xn, yn)
-        local hit, x3, y3, xn3, yn3, frac = util.traceLine(x2, y2, x2+xn2*puddleW, y2+yn2*puddleW, bloodspray.collideFilter)
-        if hit then
+        local W = self:findBloodEdge(x2, y2, xn, yn, xn2, yn2)
+        if W then
             custom = true
-            rightW = puddleW*util.binarySearch(0, frac, 6, function(t)
-                local x4, y4 = x2+xn2*puddleW*t, y2+yn2*puddleW*t
-                local hit2 = util.traceLine(x4, y4, x4-xn*0.006, y4-xn*0.006, bloodspray.collideFilter)
-                return hit2~=nil
-            end)
-        else
-            local x4, y4 = x2+xn2*puddleW, y2+yn2*puddleW
-            local hit2 = util.traceLine(x4, y4, x4-xn*0.006, y4-xn*0.006, bloodspray.collideFilter)
-            if hit2==nil then
-                custom = true
-                rightW = puddleW*util.binarySearch(0, 1, 6, function(t)
-                    local x4, y4 = x2+xn2*puddleW*t, y2+yn2*puddleW*t
-                    local hit3 = util.traceLine(x4, y4, x4-xn*0.006, y4-xn*0.006, bloodspray.collideFilter)
-                    return hit3~=nil
-                end)
-            end
+            rightW = W
         end
     end
+
     if custom then
         blood.mesh = love.graphics.newMesh({{-leftW, -puddleH}, {-leftW, puddleH}, {rightW, puddleH}, {rightW, -puddleH}}, "fan", "static")
         blood.custommesh = true
     else
         blood.mesh = bloodspray.puddle
+    end
+end
+
+function bloodspray:findBloodEdge(x2, y2, xn, yn, xn2, yn2)
+    local hit, x3, y3, xn3, yn3, frac = util.traceLine(x2, y2, x2+xn2*puddleW, y2+yn2*puddleW, bloodspray.collideFilter)
+    if hit then
+        return puddleW*util.binarySearch(0, frac, 6, function(t)
+            local x4, y4 = x2+xn2*puddleW*t, y2+yn2*puddleW*t
+            local hit2 = util.traceLine(x4, y4, x4-xn*0.006, y4-xn*0.006, bloodspray.collideFilter)
+            return hit2~=nil
+        end)
+    else
+        local x4, y4 = x2+xn2*puddleW, y2+yn2*puddleW
+        local hit2 = util.traceLine(x4, y4, x4-xn*0.006, y4-xn*0.006, bloodspray.collideFilter)
+        if hit2==nil then
+            return puddleW*util.binarySearch(0, 1, 6, function(t)
+                local x4, y4 = x2+xn2*puddleW*t, y2+yn2*puddleW*t
+                local hit3 = util.traceLine(x4, y4, x4-xn*0.006, y4-xn*0.006, bloodspray.collideFilter)
+                return hit3~=nil
+            end)
+        end
     end
 end
 
