@@ -22,6 +22,12 @@ function world:initialize()
         self.drawents[k] = {}
         world.drawCategories[v] = k
     end
+    hook.add("render", self)
+    hook.add("postload", self)
+end
+
+function world:postload()
+    self:loadLevel("levels/level1.lua")
 end
 
 function world:loadLevel(level)
@@ -90,7 +96,7 @@ function world:removeEntity(ent)
     end
 end
 
-function world:draw()
+function world:render()
     -- Update game logic
     self.t = self.t + self.dt
     self.physworld:update(self.dt)
