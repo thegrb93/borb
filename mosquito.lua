@@ -131,6 +131,7 @@ function bloodspray:initialize(x, y, dx, dy)
             updateKutta = updateKutta,
             think = bloodspray.thinkDrip,
             mesh = bloodspray.drip,
+            draw = bloodspray.drawBlood,
         }
         blood.x, blood.y, blood.a = getKutta()
         self.spray[i] = blood
@@ -157,11 +158,27 @@ function bloodspray:thinkDrip(blood)
     end
 end
 
+function bloodspray:thinkPuddle()
+end
+
+function bloodspray:thinkCeilingDrip(blood)
+    if blood.dripped then
+        local x, y, a, dx, dy, da = blood.getKutta()
+        local fixture = util.traceLine(x, y, x+dx*self.dt*2, y+dy*self.dt*2, bloodspray.collideFilter)
+        if fixture then
+            blood.think = bloodspray.thinkPuddle
+            blood.draw = bloodspray.drawBlood
+        else
+            local _1, _2
+            _1, blood.oy, _2 = blood.updateKutta(0, dy*-0.05 + self.gy, 0)
+        end
+    end
+end
+
 function bloodspray:buildBlood(blood, x, y, xn, yn)
     blood.x = x
     blood.y = y
     blood.a = math.vecToAng(xn, yn)
-    blood.think = bloodspray.thinkPuddle
     
     local custom, leftW, rightW = false, puddleW, puddleW
     local x2, y2 = x+xn*0.005, y+xn*0.005
@@ -188,6 +205,24 @@ function bloodspray:buildBlood(blood, x, y, xn, yn)
     else
         blood.mesh = bloodspray.puddle
     end
+    
+    blood.think = bloodspray.thinkPuddle
+    -- Drip
+    if math.random()>0.5 then
+        local xn2, yn2 = math.rotVecCCW(xn, yn)
+        local offset = math.random()*(rightW+leftW)-rightW
+        blood.ox, blood.oy = x+xn2*offset, y+yn2*offset
+        if yn < -0.17364 then
+            blood.h = 0
+            flux.to(blood, 2, { h = math.random() + 0.1 }):ease("linear"):delay(math.random()*1)
+            blood.draw = bloodspray.drawFloorDrip
+        elseif yn > 0.17364 then
+            flux.to(blood, 1, { oy = y + 0.1 }):ease("linear"):delay(math.random()*2):oncomplete(function() blood.dripped = true end)
+            blood.think = bloodspray.thinkCeilingDrip
+            blood.draw = bloodspray.drawCeilingDrip
+            blood.setKutta(blood.ox, y + 0.1, 0, 0, 0.05, 0)
+        end
+    end
 end
 
 function bloodspray:findBloodEdge(x2, y2, xn, yn, xn2, yn2)
@@ -211,15 +246,26 @@ function bloodspray:findBloodEdge(x2, y2, xn, yn, xn2, yn2)
     end
 end
 
-function bloodspray:thinkPuddle()
-end
-
 function bloodspray:draw()
     love.graphics.setColor( 1, 0, 0, self.alpha )
     for k, blood in ipairs(self.spray) do
-        love.graphics.draw(blood.mesh, blood.x, blood.y, blood.a)
+        blood:draw()
     end
     love.graphics.setColor( 1, 1, 1, 1 )
+end
+
+function bloodspray.drawBlood(blood)
+    love.graphics.draw(blood.mesh, blood.x, blood.y, blood.a)
+end
+
+function bloodspray.drawFloorDrip(blood)
+    bloodspray.drawBlood(blood)
+    love.graphics.rectangle("fill", blood.ox-0.05, blood.oy, 0.1, blood.h)
+end
+
+function bloodspray.drawCeilingDrip(blood)
+    bloodspray.drawBlood(blood)
+    love.graphics.rectangle("fill", blood.ox, blood.oy, 0.1, 0.1)
 end
 
 function bloodspray:destroy()
