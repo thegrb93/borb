@@ -5,12 +5,6 @@ local world = class("world")
 world.backgroundimg = love.graphics.newImage("img/background.png")
 world.backgroundw = world.backgroundimg:getWidth()*0.5
 world.backgroundh = world.backgroundimg:getHeight()*0.5
-world.drawCategories = {
-    "background",
-    "foreground",
-    "gui"
-}
-
 function world:initialize()
     self.dt = 1/winmode.refreshrate
     self.addents = {}
@@ -18,9 +12,15 @@ function world:initialize()
     self.addedents = {}
     self.thinkents = {}
     self.drawents = {}
+    self.drawCategories = {
+        "background",
+        "worldforeground",
+        "foreground",
+        "gui"
+    }
     for k, v in ipairs(self.drawCategories) do
         self.drawents[k] = {}
-        world.drawCategories[v] = k
+        self.drawCategories[v] = k
     end
     hook.add("render", self)
     hook.add("postload", self)

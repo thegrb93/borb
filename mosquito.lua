@@ -115,7 +115,7 @@ bloodspray.collideFilter = function(fixture)
 end
 
 function bloodspray:initialize(x, y, dx, dy)
-    self.drawCategory = world.drawCategories.foreground
+    self.drawCategory = world.drawCategories.worldforeground
     self.maxblood = 30
     self.dt = world.dt
     self.gx, self.gy = world.physworld:getGravity()
