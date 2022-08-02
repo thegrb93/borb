@@ -1,3 +1,4 @@
+addType("snake", nil, function()
 local snake = types.snake
 
 function snake:initialize()
@@ -13,3 +14,4 @@ end
 function snake:draw()
 end
 
+end)

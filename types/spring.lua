@@ -1,33 +1,6 @@
-
-local spawn = types.spawn
-function spawn:initialize(data)
-    self.spawnpoint = {x = data.center.x, y = -data.center.y}
-    hook.add("worldloaded", self)
-end
-
-function spawn:destroy()
-    hook.remove("worldloaded", self)
-end
-
-function spawn:worldloaded()
-    world.player = types.borb:new(self.spawnpoint.x, self.spawnpoint.y, 1.5)
-    world:addEntity(world.player)
-end
-
-local spike = types.spike
-function spike:initialize(body, data)
-    self.drawCategory = world.drawCategories.foreground
-    self.body = body
-    self.body:setObject(self)
-    self.x, self.y = data.center.x, -data.center.y
-    world:addEntity(self)
-end
-
-function spike:draw(data)
-    
-end
-
+addType("spring", nil, function()
 local spring = types.spring
+
 spring.graphic = love.graphics.newImage( "img/spring.png" )
 function spring:initialize(body, data)
     self.drawCategory = world.drawCategories.foreground
@@ -76,3 +49,5 @@ function spring:draw()
     love.graphics.polygon("fill", self.body:getWorldPoints(self.body.shapes.fixture1:getPoints()))
     love.graphics.setColor(1, 1, 1, 1)
 end
+
+end)

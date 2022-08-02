@@ -1,7 +1,9 @@
 local wf = require("lib/windfield")
 local rube = require("lib/rube")
 
-local world = class("world")
+addType("world", nil, function()
+local world = types.world
+
 world.backgroundimg = love.graphics.newImage("img/background.png")
 world.backgroundw = world.backgroundimg:getWidth()*0.5
 world.backgroundh = world.backgroundimg:getHeight()*0.5
@@ -154,4 +156,4 @@ end
 
 _G.world = world:new()
 
-
+end)

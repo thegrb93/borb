@@ -68,6 +68,45 @@ function util.drawBeam(x1, y1, x2, y2, u1, v1, u2, v2, width, texture)
 	love.graphics.draw(beamMesh)
 end
 
+function util.loadTypes()
+	types = {}
+	local types = types
+	local typesToCreate = {}
+	local typesToInit = {}
+	function addType(name, basetype, func)
+		typesToCreate[name] = basetype or false
+		typesToInit[#typesToInit+1] = func
+	end
+	for k, v in ipairs(love.filesystem.getDirectoryItems("types")) do
+		local n = string.match(v, "^(.-)%.lua$")
+		require("types/"..n)
+	end
+	while next(typesToCreate)~=nil do
+		local created = 0
+		for name, basetype in pairs(typesToCreate) do
+			if basetype then
+				if types[basetype] then
+					types[name] = class(name, types[basetype])
+					typesToCreate[name] = nil
+					created = created + 1
+				end
+			else
+				types[name] = class(name)
+				typesToCreate[name] = nil
+				created = created + 1
+			end
+		end
+		if created==0 then
+			local badType = next(typesToCreate)
+			error("Failed to create type \""..badType.."\", missing basetype \""..typesToCreate[badType].."\"")
+		end
+	end
+	for _, v in ipairs(typesToInit) do v() end
+	function addType(name, basetype, func)
+		types[name] = class(name, basetype and (types[basetype] or error("Couldn't find basetype: "..basetype)))
+	end
+end
+
 function math.normalizeVec(x, y)
 	local l = math.sqrt(x^2+y^2)
 	return x/l, y/l
