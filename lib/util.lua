@@ -74,8 +74,7 @@ function util.loadTypes()
 	local typesToCreate = {}
 	local typesToInit = {}
 	function addType(name, basetype, func)
-		typesToCreate[name] = basetype or false
-		typesToInit[#typesToInit+1] = func
+		typesToCreate[name] = {basetype = basetype, func = func}
 	end
 	for k, v in ipairs(love.filesystem.getDirectoryItems("types")) do
 		local n = string.match(v, "^(.-)%.lua$")
@@ -83,28 +82,49 @@ function util.loadTypes()
 	end
 	while next(typesToCreate)~=nil do
 		local created = 0
-		for name, basetype in pairs(typesToCreate) do
-			if basetype then
-				if types[basetype] then
-					types[name] = class(name, types[basetype])
+		for name, v in pairs(typesToCreate) do
+			if v.basetype then
+				local base = types[v.basetype]
+				if base then
+					types[name] = class(name, base)
 					typesToCreate[name] = nil
+					typesToInit[#typesToInit+1] = {basetype = base, func = v.func}
 					created = created + 1
 				end
 			else
 				types[name] = class(name)
 				typesToCreate[name] = nil
+				typesToInit[#typesToInit+1] = {func = v.func}
 				created = created + 1
 			end
 		end
 		if created==0 then
 			local badType = next(typesToCreate)
-			error("Failed to create type \""..badType.."\", missing basetype \""..typesToCreate[badType].."\"")
+			error("Failed to create type \""..badType.."\", missing basetype \""..typesToCreate[badType].basetype.."\"")
 		end
 	end
-	for _, v in ipairs(typesToInit) do v() end
+	for _, v in ipairs(typesToInit) do v.func(v.basetype) end
 	function addType(name, basetype, func)
 		types[name] = class(name, basetype and (types[basetype] or error("Couldn't find basetype: "..basetype)))
 	end
+end
+
+function util.serializeArray(tbl, func)
+	local buff = {love.data.pack("<L", #tbl)}
+	for k, v in ipairs(tbl) do
+		buff[#buff+1] = func(v)
+	end
+	return table.concat(buff)
+end
+
+function util.deserializeArray(buff, pos, func)
+	local tbl = {}
+	local size = love.data.unpack("<L", buff, pos)
+	pos = pos + 4
+	for i=1, size do
+		tbl[i], pos = func(buff, pos)
+	end
+	return tbl, pos
 end
 
 function math.normalizeVec(x, y)
@@ -157,89 +177,5 @@ function math.rotVec(x, y, a)
 	local c, s = math.cos(a), math.sin(a)
 	return c*x + s*y, c*y - s*x
 end
-
-animatedSprite = class("animatedSprite")
-animatedSpriteBlurred = class("animatedSpriteBlurred", animatedSprite)
-function animatedSprite:initialize(img, map)
-	self.map = map
-	self.meshes = {}
-	self.maxt = map.maxt
-	for k, v in ipairs(map) do
-		local mesh = love.graphics.newMesh({{-0.5, -0.5, v.u1, v.v1}, {0.5, -0.5, v.u2, v.v1}, {0.5, 0.5, v.u2, v.v2}, {-0.5, 0.5, v.u1, v.v2}}, "fan", "static")
-		mesh:setTexture(img)
-		self.meshes[k] = mesh
-	end
-end
-
-function animatedSprite:destroy()
-	for k, v in ipairs(self.meshes) do
-		v:release()
-	end
-end
-
-function animatedSprite:findMesh(t)
-	t = t % self.maxt
-	for k, v in ipairs(self.map) do
-		if t < v.t then
-			return self.meshes[k-1]
-		end
-	end
-	return self.meshes[#self.meshes]
-end
-
-function animatedSprite:draw(t, ...)
-	love.graphics.draw(self:findMesh(t), ...)
-end
-
-function animatedSpriteBlurred:findMeshes(t, tlen)
-	t = t % self.maxt
-	local tleft = tlen
-	local weights = {}
-	local pos = #self.map
-	for k, v in ipairs(self.map) do
-		if t < v.t then
-			pos = ((k-2) % #self.map) + 1
-			break
-		end
-	end
-	do
-		local nextp = (pos % #self.map) + 1
-		local dt = math.min((self.map[nextp].t - t) % self.maxt, tleft)
-		weights[pos] = dt
-		tleft = tleft - dt
-		pos = nextp
-	end
-
-	while tleft>0 do
-		local nextp = (pos % #self.map) + 1
-		local dt = math.min((self.map[nextp].t - self.map[pos].t) % self.maxt, tleft)
-		weights[pos] = (weights[pos] or 0) + dt
-		tleft = tleft - dt
-		pos = nextp
-	end
-
-	local meshes = {}
-	for k, v in pairs(weights) do
-		meshes[#meshes+1] = {mesh = self.meshes[k], weight = v}
-	end
-	local alpha = 1
-	for i=#meshes, 2, -1 do
-		local val = (meshes[i].weight / tlen) * alpha
-		meshes[i].alpha = val
-		alpha = alpha / (1 - val)
-	end
-	meshes[1].alpha = 1
-	return meshes
-end
-
-function animatedSpriteBlurred:draw(t, tlen, ...)
-	for k, v in ipairs(self:findMeshes(t, tlen)) do
-		love.graphics.setColor( 1, 1, 1, v.alpha )
-		love.graphics.draw(v.mesh, ...)
-	end
-	love.graphics.setColor( 1, 1, 1, 1 )
-end
-
-
 
 return util

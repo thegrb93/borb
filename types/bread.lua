@@ -1,10 +1,11 @@
-addType("bread", nil, function()
+addType("bread", "baseentity", function(baseentity)
 local bread = types.bread
 
-bread.graphic = love.graphics.newImage( "img/bread.png" )
+bread.graphic = images["bread.png"]
 bread.originx = bread.graphic:getWidth()*0.5
 bread.originy = bread.graphic:getHeight()*0.5
 function bread:initialize(borb, x, y)
+	baseentity.initialize(self)
 	self.borb = borb
 	self.drawCategory = world.drawCategories.foreground
 	self.body = world.physworld:newCircleCollider(x, y, 0.5)
@@ -43,13 +44,14 @@ end
 
 end)
 
-addType("crumbs", nil, function()
+addType("crumbs", "baseentity", function(baseentity)
 local crumbs = types.crumbs
 
-crumbs.graphic = love.graphics.newImage( "img/crumb.png" )
+crumbs.graphic = images["crumb.png"]
 crumbs.originx = crumbs.graphic:getWidth()*0.5
 crumbs.originy = crumbs.graphic:getHeight()*0.5
 function crumbs:initialize(target)
+	baseentity.initialize(self)
 	self.target = target
 	self.drawCategory = world.drawCategories.foreground
 	self.maxcrumbs = 100
@@ -90,7 +92,7 @@ function crumbs.crumbThink(crumb, tx, ty, tdx, tdy)
 end
 
 function crumbs:think()
-	if self.target:isDestroyed() then self:destroy() return end
+	if self.target:isDestroyed() then self:remove() return end
 	local tx, ty = self.target:getPosition()
 	local tdx, tdy = self.target:getLinearVelocity()
 	for k, crumb in ipairs(self.crumbs) do
@@ -98,10 +100,6 @@ function crumbs:think()
 			self.crumbThink(crumb, tx, ty, tdx, tdy)
 		end
 	end
-end
-
-function crumbs:destroy()
-	world:removeEntity(self)
 end
 
 function crumbs:draw()

@@ -1,8 +1,9 @@
-addType("snake", nil, function()
+addType("snake", "baseentity", function(baseentity)
 local snake = types.snake
 
 function snake:initialize()
-    self.drawCategory = world.drawCategories.foreground
+	baseentity.initialize(self)
+	self.drawCategory = world.drawCategories.foreground
 end
 
 function snake:destroy()

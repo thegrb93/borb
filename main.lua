@@ -5,6 +5,13 @@ scheduler = require("lib/scheduler")()
 util = require("lib/util")
 flux = require("lib/flux")
 
+images = setmetatable({},{__index=function(t,k)
+	local r=love.graphics.newImage("img/"..k) t[k] = r return r
+end})
+sounds = setmetatable({},{__index=function(t,k)
+	local r=love.sound.newSoundData("sound/"..k) t[k] = r return r
+end})
+
 util.loadTypes()
 
 function love.run()
