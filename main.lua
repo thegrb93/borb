@@ -11,6 +11,9 @@ end})
 sounds = setmetatable({},{__index=function(t,k)
 	local r=love.sound.newSoundData("sound/"..k) t[k] = r return r
 end})
+models = setmetatable({},{__index=function(t,k)
+	local r=util.loadModel(k) t[k] = r return r
+end})
 
 util.loadTypes()
 

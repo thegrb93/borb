@@ -35,6 +35,44 @@ end
 
 end)
 
+addType("background", "baseentity", function(baseentity)
+local background = types.background
+
+background.img = images["background.png"]
+background.w = background.img:getWidth()*0.5
+background.h = background.img:getHeight()*0.5
+function background:initialize()
+	baseentity.initialize(self)
+	self.drawCategory = world.drawCategories.background
+end
+
+function background:draw()
+	love.graphics.draw(background.img, 0, 0, 0, 0.25, 0.25, background.w, background.h)
+end
+
+end)
+
+addType("prop", "baseentity", function(baseentity)
+local prop = types.prop
+
+function prop:initialize(model, x, y, a)
+	baseentity.initialize(self)
+	self.x, self.y, self.a = x, y, a
+	self.model = models[model]
+end
+
+function prop:serialize(buffer)
+	buffer[#buffer+1] = love.data.pack("<sddd", self.model, self.x, self.y, self.a)
+end
+
+function prop.deserialize(buffer, pos)
+	local model, x, y, a
+	model, x, y, a, pos = love.data.unpack("<sddd", buffer, pos)
+	return prop:new(model, x, y, a), pos
+end
+
+end)
+
 addType("animatedSprite", nil, function()
 local animatedSprite = types.animatedSprite
 
@@ -121,93 +159,6 @@ function animatedSpriteBlurred:draw(t, tlen, ...)
 		love.graphics.draw(v.mesh, ...)
 	end
 	love.graphics.setColor( 1, 1, 1, 1 )
-end
-
-end)
-
-addType("model", nil, function()
-local model = types.model
-
-model.store = {}
-function model:initialize(name, x, y)
-	if name then
-		self.data = model.store[name] or model.loadFromFile(name)
-	else
-		self.data = {
-			images = {},
-			meshes = {},
-			shapes = {}
-		}
-	end
-end
-
-function model.loadFromFile(name)
-	local data = model.deserialize(love.filesystem.read(name))
-	model.store[name] = data
-	return data
-end
-
-function model.saveToFile(name)
-	love.filesystem.write(name, model.serialize(model.store[name]))
-end
-
-function model.serialize(data)
-	local buffer = {}
-	buffer[#buffer+1] = util.serializeArray(data.images, model.serializeImgPath)
-	buffer[#buffer+1] = util.serializeArray(data.meshes, model.serializeMesh)
-	buffer[#buffer+1] = util.serializeArray(data.shapes, model.serializeShape)
-	return table.concat(buffer)
-end
-
-function model.deserialize(buffer)
-	local data = {}
-	local pos = 1
-	data.images, pos = util.deserializeArray(buffer, pos, model.deserializeImgPath)
-	data.meshes, pos = util.deserializeArray(buffer, pos, model.deserializeMesh)
-	data.shapes, pos = util.deserializeArray(buffer, pos, model.deserializeShape)
-	return data
-end
-
-function model.serializeImgPath(img)
-	return love.data.pack("<s", img.filename)
-end
-
-function model.serializeMesh(mesh)
-	local count = mesh:getVertexCount()
-	local buffer = {love.data.pack("<L", count)}
-	for i=1, count do
-		buffer[#buffer+1] = love.data.pack("<dddd", mesh:getVertex(i))
-	end
-	return table.concat(buffer)
-end
-
-function model.serializeShape(shape)
-	local buffer = {}
-	local verts = {shape:getPoints()}
-	buffer[#buffer+1] = love.data.pack("<L"..string.rep("d",#verts), #verts, unpack(verts))
-end
-
-function model.deserializeImgPath(buffer, pos)
-	local path = love.data.unpack("<s", buffer, pos)
-	local tbl = {
-		filename = path,
-		image = images[path]
-	}
-	return tbl, pos+4+#path
-end
-
-function model.deserializeMesh(buffer, pos)
-	local verts
-	pos, verts = util.deserializeArray(buffer, pos, function(buffer, pos)
-		return pos+4*8, {love.data.unpack("<dddd", buffer, pos)}
-	end)
-	return love.graphics.newMesh(verts, "triangles", "static"), pos
-end
-
-function model.deserializeShape(buffer, pos)
-	local count = love.data.unpack("<L", buffer, pos)
-	pos = pos + 4
-	return love.physics.newPolygonShape(love.data.unpack("<"..string.rep("d",count), buffer, pos)), pos+count*8
 end
 
 end)

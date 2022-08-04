@@ -50,4 +50,14 @@ function spring:draw()
 	love.graphics.setColor(1, 1, 1, 1)
 end
 
+function spring:serialize(buffer)
+	buffer[#buffer+1] = love.data.pack("<dddd", self.x, self.y, self.a, self.power)
+end
+
+function spring.deserialize(buffer, pos)
+	local x, y, a, power
+	x, y, a, power, pos = love.data.unpack("<dddd", buffer, pos)
+	return spring:new(x, y, a, power), pos
+end
+
 end)

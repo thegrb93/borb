@@ -1,106 +1,139 @@
-addType("mainmenu", "baseentity", function(baseentity)
+addType("mainmenu", "basegui", function(basegui)
 local mainmenu = types.mainmenu
 
 local controls = [[Controls:
+esc: quit
 1: play
 2: leveleditor
-3: modeleditor
 ]]
 
 function mainmenu:initialize()
-	baseentity.initialize(self)
-	self.drawCategory = world.drawCategories.gui
+	basegui.initialize(self, world.basegui, 0, 0, scrw, scrh)
 	hook.add("keypressed", self)
 end
 
 function mainmenu:keypressed(key)
-	if key=="1" then
-		world:clear()
-		world:loadLevel("levels/level1.lua")
-	elseif key=="2" then
-		world:clear()
-		types.levelEditor:new():spawn()
-	elseif key=="3" then
-		world:clear()
-		types.modelEditor:new():spawn()
+	if self.activeControl then
+		self.activeControl:keypressed(key)
+	elseif mainmenu.keypressedCmd[key] then
+		mainmenu.keypressedCmd[key](self)
 	end
 end
 
-function mainmenu:draw()
+mainmenu.keypressedCmd = {
+	["1"] = function(self)
+		world:clear()
+		world:loadLevel("levels/level1.lua")
+	end,
+	["2"] = function(self)
+		world:clear()
+		types.levelEditor:new()
+	end,
+}
+
+function mainmenu:paint()
 	love.graphics.print(controls)
 end
 
-function mainmenu:onRemove()
+function mainmenu:onClose()
 	hook.remove("keypressed", self)
 end
-
 end)
 
-addType("modelEditor", "baseentity", function(baseentity)
-local modelEditor = types.modelEditor
 
-local controls = [[Controls:
-mouse1: draw
-mouse2: erase
-space: play
-backspace: clear
-s: save
-l: load
-[: Increase brush
-]: Decrease brush
-h: Show/Hide controls
-]]
-
-function modelEditor:initialize()
-	baseentity.initialize(self)
-	self.drawCategory = world.drawCategories.gui
-	hook.add("keypressed", self)
-end
-
-function modelEditor:keypressed(key)
-end
-
-function modelEditor:draw()
-	love.graphics.print(controls)
-end
-
-function modelEditor:onRemove()
-	hook.remove("keypressed", self)
-end
-
-end)
-
-addType("levelEditor", "baseentity", function(baseentity)
+addType("levelEditor", "basegui", function(basegui)
 local levelEditor = types.levelEditor
 
 local controls = [[Controls:
-mouse1: draw
-mouse2: erase
-space: play
-backspace: clear
+esc: exit
 s: save
 l: load
-[: Increase brush
-]: Decrease brush
-h: Show/Hide controls
+i: import
+`: console
 ]]
 
 function levelEditor:initialize()
-	baseentity.initialize(self)
-	self.drawCategory = world.drawCategories.gui
+	basegui.initialize(self, world.basegui, 0, 0, scrw, scrh)
+
+	self.editingtxt = types.label:new(self, 100, 0, "Editing: <new file>", {1,1,1})
+
 	hook.add("keypressed", self)
 end
 
 function levelEditor:keypressed(key)
+	if self.activeControl then
+		self.activeControl:keypressed(key)
+	elseif levelEditor.keypressedCmd[key] then
+		levelEditor.keypressedCmd[key](self)
+	end
 end
 
-function levelEditor:draw()
+levelEditor.keypressedCmd = {
+	escape = function(self)
+		world:clear()
+		types.mainmenu:new()
+	end,
+	s = function(self)
+		local panel = types.inputpanel:new(self, scrw*0.5-150, 200, 300, 50, "Save file (mdl):", {0.2, 0.2, 0.2}, {0.4, 0.4, 0.4}, {1, 1, 1})
+		self.activeControl = panel
+		if self.filename then
+			panel.entry.entrytxt.text = self.filename
+		end
+		function panel.entry.onEnter(_, txt)
+			if #txt>0 then
+				self:save(txt)
+			end
+			panel:close()
+			self.activeControl = nil
+		end
+	end,
+	l = function(self)
+		local panel = types.inputpanel:new(self, scrw*0.5-150, 200, 300, 50, "Load file (mdl):", {0.2, 0.2, 0.2}, {0.4, 0.4, 0.4}, {1, 1, 1})
+		self.activeControl = panel
+		function panel.entry.onEnter(_, txt)
+			if #txt>0 then
+				self:load(txt)
+			end
+			panel:close()
+			self.activeControl = nil
+		end
+	end,
+	i = function(self)
+		local panel = types.inputpanel:new(self, scrw*0.5-150, 200, 300, 50, "Import into mdl (obj/mdl):", {0.2, 0.2, 0.2}, {0.4, 0.4, 0.4}, {1, 1, 1})
+		self.activeControl = panel
+		function panel.entry.onEnter(_, txt)
+			if #txt>0 then
+				self:import(txt)
+			end
+			panel:close()
+			self.activeControl = nil
+		end
+	end,
+	["`"] = function(self)
+		console:toggle()
+	end
+}
+
+function levelEditor:paint()
 	love.graphics.print(controls)
 end
 
-function levelEditor:onRemove()
-	hook.remove("keypressed", self)
+function levelEditor:save(name)
+	self.filename = name
+	self.editingtxt.text = "Editing: "..name
 end
 
+function levelEditor:load(name)
+	self.filename = name
+	self.editingtxt.text = "Editing: "..name
+end
+
+function levelEditor:import(name)
+	
+end
+
+function levelEditor:onClose()
+	hook.remove("keypressed", self)
+end
 end)
 

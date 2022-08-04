@@ -1,5 +1,9 @@
 local util = {}
 
+function util.inBox(x, y, bx, by, bw, bh)
+	return x>=bx and y>=by and x<=bx+bw and y<=by+bh
+end
+
 function util.newPDController(body, pgain, dgain)
 	local mass, inertia = body:getMass(), body:getInertia()
 	local dgain = dgain or math.sqrt(pgain)*2
@@ -83,6 +87,7 @@ function util.loadTypes()
 	while next(typesToCreate)~=nil do
 		local created = 0
 		for name, v in pairs(typesToCreate) do
+			if types[name] then error("Multiple type definition: "..name) end
 			if v.basetype then
 				local base = types[v.basetype]
 				if base then
@@ -109,22 +114,72 @@ function util.loadTypes()
 	end
 end
 
-function util.serializeArray(tbl, func)
-	local buff = {love.data.pack("<L", #tbl)}
+function util.serializeArray(buffer, tbl, func)
+	buffer[#buffer+1] = love.data.pack("<L", #tbl)
 	for k, v in ipairs(tbl) do
-		buff[#buff+1] = func(v)
+		func(buffer, v)
 	end
-	return table.concat(buff)
 end
 
-function util.deserializeArray(buff, pos, func)
+function util.deserializeArray(buffer, pos, func)
 	local tbl = {}
-	local size = love.data.unpack("<L", buff, pos)
-	pos = pos + 4
+	local size
+	size, pos = love.data.unpack("<L", buffer, pos)
 	for i=1, size do
-		tbl[i], pos = func(buff, pos)
+		tbl[i], pos = func(buffer, pos)
 	end
 	return tbl, pos
+end
+
+function util.saveModel(name, data)
+	local buffer = {}
+	util.serializeArray(buffer, data.images, function(buffer, img)
+		buffer[#buffer+1] = love.data.pack("<s", img.filename)
+	end)
+	util.serializeArray(buffer, data.meshes, util.serializeMesh)
+	util.serializeArray(buffer, data.shapes, util.serializeShape)
+	love.filesystem.write("mdls/"..name..".mdl", table.concat(buffer))
+end
+
+function util.loadModel(name)
+	local buffer = love.filesystem.read("mdls/"..name..".mdl")
+	local data = {}
+	local pos = 1
+	data.images, pos = util.deserializeArray(buffer, pos, function(buffer, pos)
+		local path
+		path, pos = love.data.unpack("<s", buffer, pos)
+		return {filename = path, image = images[path]}, pos
+	end)
+	data.meshes, pos = util.deserializeArray(buffer, pos, util.deserializeMesh)
+	data.shapes, pos = util.deserializeArray(buffer, pos, util.deserializeShape)
+	return data
+end
+
+function util.serializeMesh(buffer, mesh)
+	local count = mesh:getVertexCount()
+	buffer[#buffer+1] = love.data.pack("<L", count)
+	for i=1, count do
+		buffer[#buffer+1] = love.data.pack("<dddd", mesh:getVertex(i))
+	end
+end
+function util.deserializeMesh(buffer, pos)
+	local verts
+	verts, pos = util.deserializeArray(buffer, pos, function(buffer, pos)
+		local x, y, u, v
+		x, y, u, v, pos = love.data.unpack("<dddd", buffer, pos)
+		return {x, y, u, v}, pos
+	end)
+	return love.graphics.newMesh(verts, "triangles", "static"), pos
+end
+
+function util.serializeShape(buffer, shape)
+	local verts = {shape:getPoints()}
+	buffer[#buffer+1] = love.data.pack("<L"..string.rep("d",#verts), #verts, unpack(verts))
+end
+function util.deserializeShape(buffer, pos)
+	local count
+	count, pos = love.data.unpack("<L", buffer, pos)
+	return love.physics.newPolygonShape(love.data.unpack("<"..string.rep("d",count), buffer, pos)), pos+count*8
 end
 
 function math.normalizeVec(x, y)
@@ -176,6 +231,12 @@ end
 function math.rotVec(x, y, a)
 	local c, s = math.cos(a), math.sin(a)
 	return c*x + s*y, c*y - s*x
+end
+
+function table.removeByValue(t, val)
+	for k, v in ipairs(t) do
+		if v==val then table.remove(t, k) break end
+	end
 end
 
 return util

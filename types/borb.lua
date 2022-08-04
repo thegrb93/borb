@@ -245,6 +245,16 @@ function borb:explode(velx, vely)
 	self.draw = self.drawDead
 end
 
+function borb:serialize(buffer)
+	buffer[#buffer+1] = love.data.pack("<ddd", self.x, self.y, self.radius)
+end
+
+function borb.deserialize(buffer, pos)
+	local x, y, radius
+	x, y, radius, pos = love.data.unpack("<ddd", buffer, pos)
+	return borb:new(x, y, radius), pos
+end
+
 end)
 
 addType("featherProjectile", "baseentity", function(baseentity)
