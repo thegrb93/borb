@@ -71,8 +71,7 @@ function world:setupWorld()
 
 	self.camera = types.camera:new()
 	self.backcamera = types.camera:new()
-	self.basegui = types.basegui:new()
-	self.basegui:addChild(console)
+	worldgui = types.worldgui:new()
 end
 
 function world:clear()
@@ -92,7 +91,7 @@ function world:clear()
 		ent:onRemove()
 	end
 
-	self.basegui:close()
+	worldgui:close()
 	self.physworld:destroy()
 	self:setupWorld()
 	for k, _ in ipairs(flux.tweens) do
@@ -167,8 +166,8 @@ function world:render()
 
 	self.camera:pop()
 
-	-- Draw screen entities
-	self.basegui:draw()
+	-- Draw gui
+	worldgui:draw()
 end
 
 function world:loadLevel(level)

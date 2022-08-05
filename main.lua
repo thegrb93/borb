@@ -19,6 +19,7 @@ util.loadTypes()
 
 function love.run()
 	-- love.load(love.arg.parseGameArguments(arg), arg)
+	love.keyboard.setTextInput(false)
 	hook.call("postload")
 
 	-- Main loop time.

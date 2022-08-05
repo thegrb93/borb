@@ -239,4 +239,20 @@ function table.removeByValue(t, val)
 	end
 end
 
+function string.split(str, match)
+	local tbl = {}
+	local i = 1
+	while true do
+		local start, stop = string.find(str, match, i)
+		if start then
+			tbl[#tbl+1] = string.sub(str, i, start-1)
+			i = stop + 1
+		else
+			break
+		end
+	end
+	tbl[#tbl+1] = string.sub(str, i)
+	return tbl
+end
+
 return util

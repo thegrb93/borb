@@ -8,14 +8,12 @@ esc: quit
 ]]
 
 function mainmenu:initialize()
-	basegui.initialize(self, world.basegui, 0, 0, scrw, scrh)
-	hook.add("keypressed", self)
+	basegui.initialize(self, worldgui, 0, 0, scrw, scrh)
+	self:setActive()
 end
 
 function mainmenu:keypressed(key)
-	if self.activeControl then
-		self.activeControl:keypressed(key)
-	elseif mainmenu.keypressedCmd[key] then
+	if mainmenu.keypressedCmd[key] then
 		mainmenu.keypressedCmd[key](self)
 	end
 end
@@ -34,10 +32,6 @@ mainmenu.keypressedCmd = {
 function mainmenu:paint()
 	love.graphics.print(controls)
 end
-
-function mainmenu:onClose()
-	hook.remove("keypressed", self)
-end
 end)
 
 
@@ -48,22 +42,18 @@ local controls = [[Controls:
 esc: exit
 s: save
 l: load
-i: import
-`: console
+a: Add entity
+arrows: pan camera
 ]]
 
 function levelEditor:initialize()
-	basegui.initialize(self, world.basegui, 0, 0, scrw, scrh)
-
+	basegui.initialize(self, worldgui, 0, 0, scrw, scrh)
+	self:setActive()
 	self.editingtxt = types.label:new(self, 100, 0, "Editing: <new file>", {1,1,1})
-
-	hook.add("keypressed", self)
 end
 
 function levelEditor:keypressed(key)
-	if self.activeControl then
-		self.activeControl:keypressed(key)
-	elseif levelEditor.keypressedCmd[key] then
+	if levelEditor.keypressedCmd[key] then
 		levelEditor.keypressedCmd[key](self)
 	end
 end
@@ -74,8 +64,8 @@ levelEditor.keypressedCmd = {
 		types.mainmenu:new()
 	end,
 	s = function(self)
-		local panel = types.inputpanel:new(self, scrw*0.5-150, 200, 300, 50, "Save file (mdl):", {0.2, 0.2, 0.2}, {0.4, 0.4, 0.4}, {1, 1, 1})
-		self.activeControl = panel
+		local panel = types.inputpanel:new(self, scrw*0.5-150, 200, 300, 50, "Save level:", {0.2, 0.2, 0.2}, {0.4, 0.4, 0.4}, {1, 1, 1})
+		panel.entry:setActive()
 		if self.filename then
 			panel.entry.entrytxt.text = self.filename
 		end
@@ -84,29 +74,29 @@ levelEditor.keypressedCmd = {
 				self:save(txt)
 			end
 			panel:close()
-			self.activeControl = nil
+			self:setActive()
 		end
 	end,
 	l = function(self)
-		local panel = types.inputpanel:new(self, scrw*0.5-150, 200, 300, 50, "Load file (mdl):", {0.2, 0.2, 0.2}, {0.4, 0.4, 0.4}, {1, 1, 1})
-		self.activeControl = panel
+		local panel = types.inputpanel:new(self, scrw*0.5-150, 200, 300, 50, "Load level:", {0.2, 0.2, 0.2}, {0.4, 0.4, 0.4}, {1, 1, 1})
+		panel.entry:setActive()
 		function panel.entry.onEnter(_, txt)
 			if #txt>0 then
 				self:load(txt)
 			end
 			panel:close()
-			self.activeControl = nil
+			self:setActive()
 		end
 	end,
-	i = function(self)
-		local panel = types.inputpanel:new(self, scrw*0.5-150, 200, 300, 50, "Import into mdl (obj/mdl):", {0.2, 0.2, 0.2}, {0.4, 0.4, 0.4}, {1, 1, 1})
-		self.activeControl = panel
+	a = function(self)
+		local panel = types.inputpanel:new(self, scrw*0.5-150, 200, 300, 50, "Add entity (obj/mdl):", {0.2, 0.2, 0.2}, {0.4, 0.4, 0.4}, {1, 1, 1})
+		panel.entry:setActive()
 		function panel.entry.onEnter(_, txt)
 			if #txt>0 then
-				self:import(txt)
+				self:addEntity(txt)
 			end
 			panel:close()
-			self.activeControl = nil
+			self:setActive()
 		end
 	end,
 	["`"] = function(self)
@@ -128,12 +118,8 @@ function levelEditor:load(name)
 	self.editingtxt.text = "Editing: "..name
 end
 
-function levelEditor:import(name)
+function levelEditor:addEntity(name)
 	
-end
-
-function levelEditor:onClose()
-	hook.remove("keypressed", self)
 end
 end)
 
