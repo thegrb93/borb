@@ -148,12 +148,10 @@ function textentry:initialize(parent, x, y, w, h, bgcolor, txtcolor)
 	basegui.initialize(self, parent, x, y, w, h)
 	self.entry = types.panel:new(self, 0, 0, w, h, bgcolor)
 	self.entrytxt = types.label:new(self, 2, 2, "", txtcolor)
-	self.validTime = love.timer.getTime()+0.2
 	self.active = false
 end
 
 function textentry:keypressed(key)
-	-- if love.timer.getTime()<self.validTime then return end
 	if key=="return" then
 		local txt = self.entrytxt.text
 		self.entrytxt.text = ""
@@ -168,7 +166,6 @@ function textentry:keypressed(key)
 end
 
 function textentry:textinput(txt)
-	-- if love.timer.getTime()<self.validTime then return end
 	self.entrytxt.text = self.entrytxt.text .. txt
 end
 
