@@ -55,6 +55,7 @@ function world:initialize()
 		self.drawents[k] = {}
 		self.drawCategories[v] = k
 	end
+	worldgui = types.worldgui:new()
 
 	self:setupWorld()
 
@@ -71,7 +72,6 @@ function world:setupWorld()
 
 	self.camera = types.camera:new()
 	self.backcamera = types.camera:new()
-	worldgui = types.worldgui:new()
 end
 
 function world:clear()

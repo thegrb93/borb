@@ -2,7 +2,6 @@ scrw, scrh, winmode = love.window.getMode()
 class = require("lib/middleclass")
 hook = require("lib/hook")
 scheduler = require("lib/scheduler")()
-util = require("lib/util")
 flux = require("lib/flux")
 
 images = setmetatable({},{__index=function(t,k)
@@ -14,7 +13,9 @@ end})
 models = setmetatable({},{__index=function(t,k)
 	local r=util.loadModel(k) t[k] = r return r
 end})
+commands = {}
 
+util = require("lib/util")
 util.loadTypes()
 
 function love.run()

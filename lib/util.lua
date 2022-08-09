@@ -114,6 +114,24 @@ function util.loadTypes()
 	end
 end
 
+function commands.model(name)
+	local script = love.filesystem.load("rawmdl/"..name..".lua")
+	local env = {}
+	function env:mesh(data)
+	end
+	function env:fixture(data)
+	end
+	function env:body(data)
+	end
+	function env:shape(data)
+	end
+	function env:model(data)
+		util.saveModel(data.name, data)
+	end
+	setfenv(script, env)
+	script()
+end
+
 function util.serializeArray(buffer, tbl, func)
 	buffer[#buffer+1] = love.data.pack("<L", #tbl)
 	for k, v in ipairs(tbl) do

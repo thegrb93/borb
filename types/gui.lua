@@ -76,7 +76,7 @@ local worldgui = types.worldgui
 
 function worldgui:initialize()
 	basegui.initialize(self, nil, 0, 0, scrw, scrh)
-	self.console = types.console:new(self)
+	self.console = types.console:new()
 
 	hook.add("keypressed", self)
 	hook.add("textinput", self)
@@ -86,6 +86,7 @@ function worldgui:draw()
 	for k, v in ipairs(self.children) do
 		v:draw()
 	end
+	self.console:draw()
 end
 
 function worldgui:keypressed(key)
@@ -104,10 +105,14 @@ function worldgui:textinput(key)
 	end
 end
 
-function worldgui:onClose()
-	hook.remove("keypressed", self)
-	hook.remove("textinput", self)
+function worldgui:close()
+	self.activegui = nil
+	for k, v in ipairs(self.children) do
+		v:close()
+		self.children[k] = nil
+	end
 end
+
 end)
 
 addType("panel", "basegui", function(basegui)
@@ -207,15 +212,16 @@ function inputpanel:keypressed(key)
 end
 end)
 
-commands = {}
 addType("console", "panel", function(panel)
 local console = types.console
 
 function console:initialize(parent)
-	panel.initialize(self, parent, 0, scrh-200, 800, 200, {0.2, 0.2, 0.2, 0.5})
+	local max = 25
+	local h = 15*max
+	panel.initialize(self, parent, 0, scrh-h, 800, h, {0.2, 0.2, 0.2, 0.5})
 	self.firstIndex = 1
 	self.entries = {}
-	for i=1,12 do
+	for i=1, max do
 		self.entries[i] = types.label:new(self, 10, 2, "", {1,1,1})
 	end
 	self.entry = types.textentry:new(self, 10, self.h-20, self.w-20, 20, {0.4, 0.4, 0.4}, {1,1,1})
@@ -243,7 +249,7 @@ function console:print(...)
 	for _, line in ipairs(string.split(table.concat(str,"   "), "\n")) do
 		self.entries[self.firstIndex].text = line
 		for i=0, #self.entries-1 do
-			self.entries[((self.firstIndex+i-1)%#self.entries)+1].y = 180-15-i*15
+			self.entries[((self.firstIndex+i-1)%#self.entries)+1].y = self.h-35-i*15
 		end
 		self.firstIndex = ((self.firstIndex - 2) % #self.entries) + 1
 	end
@@ -291,7 +297,8 @@ function console:command(txt)
 	if #args>0 and #(args[1])>0 then
 		local command = commands[args[1]]
 		if command then
-			command(unpack(args, 2))
+			local ok, err = xpcall(command, debug.traceback, unpack(args, 2))
+			if not ok then print(err) end
 		else
 			print("Unknown command: "..args[1])
 		end
