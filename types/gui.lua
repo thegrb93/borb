@@ -217,7 +217,7 @@ local console = types.console
 
 function console:initialize(parent)
 	local max = 25
-	local h = 15*max
+	local h = 25+15*max
 	panel.initialize(self, parent, 0, scrh-h, 800, h, {0.2, 0.2, 0.2, 0.5})
 	self.firstIndex = 1
 	self.entries = {}

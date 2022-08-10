@@ -62,7 +62,7 @@ function prop:initialize(model, x, y, a)
 end
 
 function prop:serialize(buffer)
-	buffer[#buffer+1] = love.data.pack("<sddd", self.model, self.x, self.y, self.a)
+	buffer[#buffer+1] = love.data.pack("string", "<sddd", self.model, self.x, self.y, self.a)
 end
 
 function prop.deserialize(buffer, pos)

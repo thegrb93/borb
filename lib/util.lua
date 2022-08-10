@@ -110,30 +110,83 @@ function util.loadTypes()
 	end
 	for _, v in ipairs(typesToInit) do v.func(v.basetype) end
 	function addType(name, basetype, func)
-		types[name] = class(name, basetype and (types[basetype] or error("Couldn't find basetype: "..basetype)))
+		local base = basetype and (types[basetype] or error("Couldn't find basetype: "..basetype))
+		types[name] = class(name, base)
+		func(base)
 	end
+end
+
+function commands.reload()
+	love.filesystem.load("lib/util.lua")()
+end
+
+function commands.lua(str)
+	loadstring(str)()
 end
 
 function commands.model(name)
 	local script = love.filesystem.load("rawmdl/"..name..".lua")
 	local env = {}
-	function env:mesh(data)
+	function env.mesh(data)
+		local groups, vertices = util.loadPly(data.path)
+		if #groups ~= #data.materials then error("Number of meshs doesn't match number of defined materials!") end
+		data.path = nil
+		data.groups = groups
+		data.vertices = vertices
+		return data
 	end
-	function env:fixture(data)
+	function env.body(data)
+		return data
 	end
-	function env:body(data)
+	function env.shape(data)
+		return data
 	end
-	function env:shape(data)
+	function env.fixture(data)
+		return data
 	end
-	function env:model(data)
-		util.saveModel(data.name, data)
+	function env.model(data)
+		util.saveModel(data)
+		print("Saved model: "..data.name)
 	end
 	setfenv(script, env)
 	script()
 end
 
+function util.loadPly(name)
+	local path = "rawmdl/"..name
+	local data = love.filesystem.read(path)
+	local map = {}
+	local propertyidx = 1
+	for line in string.gmatch(data, "[^\n]+") do
+		local property = string.match(line, "property float (%w+)")
+		if property then
+			map[property] = propertyidx
+			propertyidx = propertyidx + 1
+		elseif line=="end_header" then break end
+	end
+	local fmt = "<"..string.rep("f",propertyidx-1)
+
+	local groups = setmetatable({},{__index=function(t,k) local r={} t[k] = r return r end})
+	local vertices = {}
+	local nverts = string.match(data, "element vertex (%d+)") or error("Couldn't find vertex count in ply: "..path)
+	local nfaces = string.match(data, "element face (%d+)") or error("Couldn't find face count in ply: "..path)
+	local _, _, index = string.find(data, "end_header\n()")
+	for i=1, nverts do
+		local args = {love.data.unpack(fmt, data, index)}
+		vertices[#vertices+1] = {args[map.x], args[map.y], args[map.s], args[map.t], map.r and args[map.r] or 1, map.g and args[map.g] or 1, map.b and args[map.b] or 1, map.a and args[map.a] or 1}
+		index = args[#args]
+	end
+	local count, mat, a, b, c, d
+	for i=1, nfaces do
+		count, mat, a, b, c, d, index = love.data.unpack("<BLLLLL", data, index)
+		local faces = groups[mat+1]
+		faces[#faces+1] = {a, b, c, d}
+	end
+	return setmetatable(groups, nil), vertices
+end
+
 function util.serializeArray(buffer, tbl, func)
-	buffer[#buffer+1] = love.data.pack("<L", #tbl)
+	buffer[#buffer+1] = love.data.pack("string", "<L", #tbl)
 	for k, v in ipairs(tbl) do
 		func(buffer, v)
 	end
@@ -149,56 +202,122 @@ function util.deserializeArray(buffer, pos, func)
 	return tbl, pos
 end
 
-function util.saveModel(name, data)
+function util.saveModel(data)
 	local buffer = {}
-	util.serializeArray(buffer, data.images, function(buffer, img)
-		buffer[#buffer+1] = love.data.pack("<s", img.filename)
+	buffer[#buffer+1] = love.data.pack("string", "<s", data.name)
+	util.serializeArray(buffer, data.models, function(buffer, mesh)
+		util.serializeArray(buffer, mesh.groups, function(buffer, faces)
+			util.serializeArray(buffer, faces, function(buffer, face)
+				buffer[#buffer+1] = love.data.pack("string", "<LLLL", unpack(face))
+			end)
+		end)
+		util.serializeArray(buffer, mesh.vertices, function(buffer, vert)
+			buffer[#buffer+1] = love.data.pack("string", "<ffffffff", unpack(vert))
+		end)
+		util.serializeArray(buffer, mesh.materials, function(buffer, str)
+			buffer[#buffer+1] = love.data.pack("string", "<s", str)
+		end)
 	end)
-	util.serializeArray(buffer, data.meshes, util.serializeMesh)
-	util.serializeArray(buffer, data.shapes, util.serializeShape)
-	love.filesystem.write("mdls/"..name..".mdl", table.concat(buffer))
+	util.serializeArray(buffer, data.bodies, function(buffer, body)
+		buffer[#buffer+1] = love.data.pack("string", "<B", body.static and 1 or 0)
+	end)
+	util.serializeArray(buffer, data.shapes, function(buffer, shape)
+		buffer[#buffer+1] = love.data.pack("string", "<s", shape.type)
+		if shape.type=="polygonList" then
+			buffer[#buffer+1] = love.data.pack("string", "<L", shape.mesh)
+		else
+			error("Unsupported shape type: "..shape.type)
+		end
+	end)
+	util.serializeArray(buffer, data.fixtures, function(buffer, fixture)
+		buffer[#buffer+1] = love.data.pack("string", "<LL", fixture.body, fixture.shape)
+	end)
+	local path = "mdls/"..data.name..".mdl"
+	love.filesystem.write(path, table.concat(buffer))
 end
 
 function util.loadModel(name)
 	local buffer = love.filesystem.read("mdls/"..name..".mdl")
 	local data = {}
 	local pos = 1
-	data.images, pos = util.deserializeArray(buffer, pos, function(buffer, pos)
-		local path
-		path, pos = love.data.unpack("<s", buffer, pos)
-		return {filename = path, image = images[path]}, pos
+	data.name, pos = love.data.unpack("<s", buffer, pos)
+	data.models, pos = util.deserializeArray(buffer, pos, function(buffer, pos)
+		local mesh = {}
+		mesh.groups, pos = util.deserializeArray(buffer, pos, function(buffer, pos)
+			return util.deserializeArray(buffer, pos, function(buffer, pos)
+				local a, b, c, d
+				a, b, c, d, pos = love.data.unpack("<LLLL", buffer, pos)
+				return {a, b, c, d}, pos
+			end)
+		end)
+		mesh.vertices, pos = util.deserializeArray(buffer, pos, function(buffer, pos)
+			local x, y, u, v, r, g, b, a
+			x, y, u, v, r, g, b, a, pos = love.data.unpack("<ffffffff", buffer, pos)
+			return {x, y, u, v, r, g, b, a}, pos
+		end)
+		mesh.materials, pos = util.deserializeArray(buffer, pos, function(buffer, pos)
+			return love.data.unpack("<s", buffer, pos)
+		end)
+		return mesh, pos
 	end)
-	data.meshes, pos = util.deserializeArray(buffer, pos, util.deserializeMesh)
-	data.shapes, pos = util.deserializeArray(buffer, pos, util.deserializeShape)
+	data.bodies, pos = util.deserializeArray(buffer, pos, function(buffer, pos)
+		local body = {}
+		body.static, pos = love.data.unpack("<B", buffer, pos)
+		return body, pos
+	end)
+	data.shapes, pos = util.deserializeArray(buffer, pos, function(buffer, pos)
+		local shape = {}
+		shape.type, pos = love.data.unpack("<s", buffer, pos)
+		if shape.type == "polygonList" then
+			shape.mesh, pos = love.data.unpack("<L", buffer, pos)
+		else
+			error("Unsupported shape type: "..shape.type)
+		end
+		return shape, pos
+	end)
+	data.fixtures, pos = util.deserializeArray(buffer, pos, function(buffer, pos)
+		local fixture = {}
+		fixture.body, fixture.shape, pos = love.data.unpack("<LL", buffer, pos)
+		return fixture, pos
+	end)
+
+	for _, model in ipairs(data.models) do
+		model.meshes = {}
+		for id, group in ipairs(model.groups) do
+			local vertices = {}
+			for _, face in ipairs(group) do
+				vertices[#vertices+1] = model.vertices[face[1]]
+				vertices[#vertices+1] = model.vertices[face[2]]
+				vertices[#vertices+1] = model.vertices[face[3]]
+				vertices[#vertices+1] = model.vertices[face[1]]
+				vertices[#vertices+1] = model.vertices[face[3]]
+				vertices[#vertices+1] = model.vertices[face[4]]
+			end
+			local mesh = love.graphics.newMesh(vertices, "triangles", "static")
+			mesh:setTexture(images[model.materials[id]])
+			model.meshes[id] = mesh
+		end
+	end
+	for _, shape in ipairs(data.shapes) do
+		if shape.type=="polygonList" then
+			local shapes = {}
+			for _, group in ipairs(data.models[shape.mesh]) do
+				for _, face in ipairs(group) do
+					local a = model.vertices[face[1]]
+					local b = model.vertices[face[2]]
+					local c = model.vertices[face[3]]
+					local d = model.vertices[face[4]]
+					shapes[#shapes+1] = love.physics.newPolygonShape(a[1], a[2], b[1], b[2], c[1], c[2], d[1], d[2])
+				end
+			end
+			shape.shapes = shapes
+		end
+	end
+
 	return data
 end
 
-function util.serializeMesh(buffer, mesh)
-	local count = mesh:getVertexCount()
-	buffer[#buffer+1] = love.data.pack("<L", count)
-	for i=1, count do
-		buffer[#buffer+1] = love.data.pack("<dddd", mesh:getVertex(i))
-	end
-end
-function util.deserializeMesh(buffer, pos)
-	local verts
-	verts, pos = util.deserializeArray(buffer, pos, function(buffer, pos)
-		local x, y, u, v
-		x, y, u, v, pos = love.data.unpack("<dddd", buffer, pos)
-		return {x, y, u, v}, pos
-	end)
-	return love.graphics.newMesh(verts, "triangles", "static"), pos
-end
-
-function util.serializeShape(buffer, shape)
-	local verts = {shape:getPoints()}
-	buffer[#buffer+1] = love.data.pack("<L"..string.rep("d",#verts), #verts, unpack(verts))
-end
-function util.deserializeShape(buffer, pos)
-	local count
-	count, pos = love.data.unpack("<L", buffer, pos)
-	return love.physics.newPolygonShape(love.data.unpack("<"..string.rep("d",count), buffer, pos)), pos+count*8
-end
+function commands.test() util.loadModel("branch") end
 
 function math.normalizeVec(x, y)
 	local l = math.sqrt(x^2+y^2)

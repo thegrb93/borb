@@ -246,7 +246,7 @@ function borb:explode(velx, vely)
 end
 
 function borb:serialize(buffer)
-	buffer[#buffer+1] = love.data.pack("<ddd", self.x, self.y, self.radius)
+	buffer[#buffer+1] = love.data.pack("string", "<ddd", self.x, self.y, self.radius)
 end
 
 function borb.deserialize(buffer, pos)

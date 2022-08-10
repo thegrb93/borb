@@ -1,17 +1,16 @@
-local meshes = {
-	mesh{"branch.ply", materials = {"bark.png"}}
-}
-
-local physics = {
-	fixture{
-		body = body{static = true},
-		shape = shape{type="polygon", mesh = meshes[1]},
-	}
-}
-
 model{
 	name = "branch",
-	meshes = meshes,
-	physics = physics
+	models = {
+		mesh{path = "branch.ply", materials = {"bark.png"}}
+	},
+	bodies = {
+		body{static = true},
+	},
+	shapes = {
+		shape{type="polygonList", mesh = 1},
+	},
+	fixtures = {
+		fixture{shape = 1, body = 1}
+	}
 }
 

@@ -51,7 +51,7 @@ function spring:draw()
 end
 
 function spring:serialize(buffer)
-	buffer[#buffer+1] = love.data.pack("<dddd", self.x, self.y, self.a, self.power)
+	buffer[#buffer+1] = love.data.pack("string", "<dddd", self.x, self.y, self.a, self.power)
 end
 
 function spring.deserialize(buffer, pos)
