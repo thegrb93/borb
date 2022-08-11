@@ -13,6 +13,11 @@ end})
 models = setmetatable({},{__index=function(t,k)
 	local r=util.loadModel(k) t[k] = r return r
 end})
+fonts = setmetatable({},{__index=function(t,name)
+	local r=setmetatable({},{__index=function(t2,size)
+		local r2 = love.graphics.newFont("img/"..name, size) t2[size] = r2 return r2
+	end}) t[name] = r return r
+end})
 commands = {}
 
 util = require("lib/util")

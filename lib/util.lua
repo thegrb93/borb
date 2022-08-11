@@ -116,6 +116,12 @@ function util.loadTypes()
 	end
 end
 
+function util.pcall(func, ...)
+	local ok, err = xpcall(func, debug.traceback, ...)
+	if not ok then print(err) end
+	return ok, err
+end
+
 function commands.reload()
 	love.filesystem.load("lib/util.lua")()
 end
@@ -237,7 +243,9 @@ function util.saveModel(data)
 end
 
 function util.loadModel(name)
-	local buffer = love.filesystem.read("mdls/"..name..".mdl")
+	local path = "mdls/"..name..".mdl"
+	local buffer = love.filesystem.read(path)
+	if not buffer then error("Couldn't load model: "..path) end
 	local data = {}
 	local pos = 1
 	data.name, pos = love.data.unpack("<s", buffer, pos)
@@ -317,7 +325,9 @@ function util.loadModel(name)
 	return data
 end
 
-function commands.test() util.loadModel("branch") end
+function util.drawModel(model, x, y, a)
+	
+end
 
 function math.normalizeVec(x, y)
 	local l = math.sqrt(x^2+y^2)

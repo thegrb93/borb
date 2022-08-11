@@ -170,6 +170,10 @@ function world:render()
 	worldgui:draw()
 end
 
+function world:getCursorPosition()
+	return self.camera.transform:inverseTransformPoint(love.mouse.getPosition())
+end
+
 function world:loadLevel(level)
 	local leveldata = world.deserializeLevel(love.filesystem.read(level))
 

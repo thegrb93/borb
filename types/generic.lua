@@ -55,20 +55,29 @@ end)
 addType("prop", "baseentity", function(baseentity)
 local prop = types.prop
 
-function prop:initialize(model, x, y, a)
+prop.properties = {
+	{name = "model"}
+}
+
+function prop:initialize(x, y, a, model)
 	baseentity.initialize(self)
+	self.drawCategory = world.drawCategories.foreground
 	self.x, self.y, self.a = x, y, a
 	self.model = models[model]
 end
 
+function prop:draw()
+	util.drawModel(self.model, self.x, self.y, self.a)
+end
+
 function prop:serialize(buffer)
-	buffer[#buffer+1] = love.data.pack("string", "<sddd", self.model, self.x, self.y, self.a)
+	buffer[#buffer+1] = love.data.pack("string", "<ddds", self.x, self.y, self.a, self.model)
 end
 
 function prop.deserialize(buffer, pos)
-	local model, x, y, a
-	model, x, y, a, pos = love.data.unpack("<sddd", buffer, pos)
-	return prop:new(model, x, y, a), pos
+	local x, y, a, model
+	x, y, a, model, pos = love.data.unpack("<ddds", buffer, pos)
+	return prop:new(x, y, a, model), pos
 end
 
 end)

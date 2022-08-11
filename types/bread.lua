@@ -29,7 +29,7 @@ function bread:getPos()
 end
 
 function bread:think()
-	local mx, my = world.camera.transform:inverseTransformPoint(love.mouse.getPosition())
+	local mx, my = world:getCursorPos()
 	local x, y = self.body:getPosition()
 	local dx, dy = self.body:getLinearVelocity()
 	local bdx, bdy = self.borb.body:getLinearVelocity()

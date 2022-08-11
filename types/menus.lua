@@ -9,6 +9,11 @@ esc: quit
 
 function mainmenu:initialize()
 	basegui.initialize(self, worldgui, 0, 0, scrw, scrh)
+	self.controls = types.dialoguelistV:new(self, 0, 3)
+	self.controls.padding = 0
+	for _, v in ipairs(string.split(controls, "\n")) do
+		self.controls:add(types.label:new(self.controls, 0, 0, v))
+	end
 	self:setActive()
 end
 
@@ -30,7 +35,6 @@ mainmenu.keypressedCmd = {
 }
 
 function mainmenu:paint()
-	love.graphics.print(controls)
 end
 end)
 
@@ -49,7 +53,12 @@ arrows: pan camera
 function levelEditor:initialize()
 	basegui.initialize(self, worldgui, 0, 0, scrw, scrh)
 	self:setActive()
-	self.editingtxt = types.label:new(self, 100, 0, "Editing: <new file>", {1,1,1})
+	self.controls = types.dialoguelistV:new(self, 0, 3)
+	self.controls.padding = 0
+	for _, v in ipairs(string.split(controls, "\n")) do
+		self.controls:add(types.label:new(self.controls, 0, 0, v))
+	end
+	self.editingtxt = types.label:new(self, 100, 3, "Editing: <new file>")
 end
 
 function levelEditor:keypressed(key)
@@ -64,39 +73,44 @@ levelEditor.keypressedCmd = {
 		types.mainmenu:new()
 	end,
 	s = function(self)
-		local panel = types.inputpanel:new(self, scrw*0.5-150, 200, 300, 50, "Save level:", {0.2, 0.2, 0.2}, {0.4, 0.4, 0.4}, {1, 1, 1})
+		local panel = types.inputpanel:new(self, 0, 0, "Save level:")
+		panel:center()
 		panel.entry:setActive()
 		if self.filename then
-			panel.entry.entrytxt.text = self.filename
+			panel.entry:setText(self.filename)
 		end
 		function panel.entry.onEnter(_, txt)
+			panel:close()
+			self:setActive()
 			if #txt>0 then
 				self:save(txt)
 			end
-			panel:close()
-			self:setActive()
 		end
 	end,
 	l = function(self)
-		local panel = types.inputpanel:new(self, scrw*0.5-150, 200, 300, 50, "Load level:", {0.2, 0.2, 0.2}, {0.4, 0.4, 0.4}, {1, 1, 1})
+		local panel = types.inputpanel:new(self, 0, 0, "Load level:")
+		panel:center()
 		panel.entry:setActive()
 		function panel.entry.onEnter(_, txt)
+			panel:close()
+			self:setActive()
 			if #txt>0 then
 				self:load(txt)
 			end
-			panel:close()
-			self:setActive()
 		end
 	end,
 	a = function(self)
-		local panel = types.inputpanel:new(self, scrw*0.5-150, 200, 300, 50, "Add entity (obj/mdl):", {0.2, 0.2, 0.2}, {0.4, 0.4, 0.4}, {1, 1, 1})
+		local panel = types.inputpanel:new(self, 0, 0, "Add entity:")
+		panel:center()
 		panel.entry:setActive()
-		function panel.entry.onEnter(_, txt)
-			if #txt>0 then
-				self:addEntity(txt)
-			end
+		if self.lastAddEntity then panel.entry:setText(self.lastAddEntity) end
+		function panel.entry.onEnter(_, name)
 			panel:close()
 			self:setActive()
+			if #name>0 then
+				self.lastAddEntity = name
+				self:addEntity(name)
+			end
 		end
 	end,
 	["`"] = function(self)
@@ -105,21 +119,38 @@ levelEditor.keypressedCmd = {
 }
 
 function levelEditor:paint()
-	love.graphics.print(controls)
 end
 
 function levelEditor:save(name)
 	self.filename = name
-	self.editingtxt.text = "Editing: "..name
+	self.editingtxt:setText("Editing: "..name)
 end
 
 function levelEditor:load(name)
 	self.filename = name
-	self.editingtxt.text = "Editing: "..name
+	self.editingtxt:setText("Editing: "..name)
 end
 
 function levelEditor:addEntity(name)
-	
+	local t = types[name]
+	if t and t:isSubclassOf(types.baseentity) then
+		local x, y = love.mouse.getPosition()
+		local wx, wy = world:getCursorPosition()
+		if t.properties then
+			local props = types.propertiespanel:new(self, x, y, "Creating: "..name, t.properties)
+			function props.onSubmit(_, d)
+				if d then
+					util.pcall(function() t:new(wx, wy, 0, unpack(d)):spawn() end)
+				end
+				self:setActive()
+			end
+		else
+			util.pcall(function() t:new(wx, wy, 0):spawn() end)
+		end
+	else
+		print("Type "..name.." doesn't exist or isn't a baseentity!")
+	end
 end
+
 end)
 
