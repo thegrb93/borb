@@ -4,6 +4,9 @@ hook = require("lib/hook")
 scheduler = require("lib/scheduler")()
 flux = require("lib/flux")
 
+commands = {}
+model = require("lib/model")
+
 images = setmetatable({},{__index=function(t,k)
 	local r=love.graphics.newImage("img/"..k) t[k] = r return r
 end})
@@ -11,14 +14,13 @@ sounds = setmetatable({},{__index=function(t,k)
 	local r=love.sound.newSoundData("sound/"..k) t[k] = r return r
 end})
 models = setmetatable({},{__index=function(t,k)
-	local r=util.loadModel(k) t[k] = r return r
+	local r=model:new(k) t[k] = r return r
 end})
 fonts = setmetatable({},{__index=function(t,name)
 	local r=setmetatable({},{__index=function(t2,size)
 		local r2 = love.graphics.newFont("img/"..name, size) t2[size] = r2 return r2
 	end}) t[name] = r return r
 end})
-commands = {}
 
 util = require("lib/util")
 util.loadTypes()

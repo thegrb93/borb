@@ -4,13 +4,13 @@ model{
 		mesh{path = "branch.ply", materials = {"bark.png"}}
 	},
 	bodies = {
-		body{static = true},
+		body{type = "static", model = 1, fixtures = {1}},
 	},
 	shapes = {
-		shape{type="polygonList", mesh = 1},
+		shape{type = "quadmesh", mesh = 1},
 	},
 	fixtures = {
-		fixture{shape = 1, body = 1}
+		fixture{shape = 1}
 	}
 }
 

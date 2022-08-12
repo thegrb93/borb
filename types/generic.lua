@@ -64,10 +64,14 @@ function prop:initialize(x, y, a, model)
 	self.drawCategory = world.drawCategories.foreground
 	self.x, self.y, self.a = x, y, a
 	self.model = models[model]
+	self.bodies = self.model:createBodies()
+	self.bodies[1]:setPosition(x, y)
 end
 
 function prop:draw()
-	util.drawModel(self.model, self.x, self.y, self.a)
+	for _, v in ipairs(self.bodies) do
+		self.model:draw(v)
+	end
 end
 
 function prop:serialize(buffer)

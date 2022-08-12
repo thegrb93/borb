@@ -161,8 +161,8 @@ function world:render()
 	end
 
 	-- draw physics meshes
-	-- love.graphics.setLineWidth(0.01)
-	-- self.physworld:draw()
+	love.graphics.setLineWidth(0.01)
+	self.physworld:draw()
 
 	self.camera:pop()
 
