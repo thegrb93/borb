@@ -5,9 +5,8 @@ local crumbs = types.crumbs
 local featherProjectile = types.featherProjectile
 
 borb.radius = 1.5
-borb.jumpRadius = borb.radius*0.79
-borb.shape = love.physics.newCircleShape(borb.radius)
-borb.jumpShape = love.physics.newCircleShape(borb.jumpRadius)
+borb.shape = love.physics.newCircleShape(borb.radius*0.8)
+borb.jumpShape = love.physics.newCircleShape(borb.radius*0.79)
 borb.floofshape = love.physics.newRectangleShape(borb.radius*1.5, borb.radius*0.5)
 borb.graphic = images["borb.png"]
 borb.angryeye = images["borb_angryeye.png"]
@@ -38,6 +37,9 @@ function borb:initialize(x, y, a)
 	self.floofNum = 20
 
 	self.body = world.physworld:newCollider(x, y, a)
+	local fixture = self.body:addFixture("Main", borb.shape)
+	fixture:setFriction(10)
+	fixture:setRestitution(0.5)
 	self.body:setType("dynamic")
 	self.body:setLinearDamping(0)
 	self.body:setAngularDamping(0)
@@ -47,9 +49,6 @@ function borb:initialize(x, y, a)
 	self.bodies = {self.body}
 	self.x, self.y, self.a, self.dx, self.dy, self.da = self.body:getState()
 
-	local fixture = self.body:addFixture("Main", borb.shape)
-	fixture:setFriction(10)
-	fixture:setRestitution(0.5)
 	self.body:setPostSolve(function(collider_1, collider_2, contact, normal_impulse1, tangent_impulse1, normal_impulse2, tangent_impulse2)
 		self:postSolve(collider_2:getObject(), contact, normal_impulse1)
 	end)
@@ -179,6 +178,9 @@ function borb:jump()
 	self.jumpEnts = {}
 	for i=1, self.jumpNum do
 		local body = world.physworld:newCollider(self.x, self.y, 0)
+		local fixture = body:addFixture("Main", borb.jumpShape)
+		fixture:setFriction(10)
+		fixture:setRestitution(0.2)
 		body:setMass(mass)
 		body:setInertia(inertia)
 		body:setInertia(0.5)
@@ -188,10 +190,6 @@ function borb:jump()
 		body:setLinearVelocity(self.dx, self.dy)
 		body:setCollisionClass("Player")
 		body:setObject(self)
-
-		local fixture = body:addFixture("Main", borb.jumpShape)
-		fixture:setFriction(10)
-		fixture:setRestitution(0.2)
 
 		local ang = 2*math.pi*i/self.jumpNum
 		local joint = love.physics.newPrismaticJoint(self.body.body, body.body, self.x, self.y, self.x, self.y, math.cos(ang), math.sin(ang), false)
