@@ -32,7 +32,7 @@ local spike = types.spike
 
 function spike:initialize(body, data)
 	baseentity.initialize(self)
-	self.drawCategory = world.drawCategories.foreground
+	self.drawCategory = world.drawCategories.worldforeground
 	self.body = body
 	self.body:setObject(self)
 	self.x, self.y = data.center.x, -data.center.y
@@ -90,6 +90,24 @@ function prop.deserialize(buffer, pos)
 	x, y, a, modelName, pos = love.data.unpack("<ddds", buffer, pos)
 	return prop:new(x, y, a, modelName), pos
 end
+end)
+
+addType("worldprop", "prop", function(prop)
+local worldprop = types.worldprop
+
+function worldprop:initialize(x, y, a, modelName)
+	prop.initialize(self, x, y, a, modelName)
+	self.drawCategory = world.drawCategories.worldforeground
+	for k, v in ipairs(self.bodies) do
+		v:setCollisionClass("World")
+	end
+end
+
+function worldprop.deserialize(buffer, pos)
+	local x, y, a, modelName
+	x, y, a, modelName, pos = love.data.unpack("<ddds", buffer, pos)
+	return worldprop:new(x, y, a, modelName), pos
+end
 
 end)
 
@@ -129,7 +147,7 @@ end
 
 end)
 
-addType("animatedSpriteBlurred", "animatedSprite", function()
+addType("animatedSpriteBlurred", "animatedSprite", function(animatedSprite)
 local animatedSpriteBlurred = types.animatedSpriteBlurred
 
 function animatedSpriteBlurred:findMeshes(t, tlen)

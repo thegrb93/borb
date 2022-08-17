@@ -49,6 +49,7 @@ function util.binarySearch(xmin, xmax, iter, func)
 end
 
 function util.traceLine(x1, y1, x2, y2, filter)
+	if x1==x2 and y1==y2 then return end
 	if filter==nil then filter = function() return true end end
 	local fixture, x, y, xn, yn, fraction
 	world.physworld.box2d_world:rayCast(x1, y1, x2, y2, function(fixture_, x_, y_, xn_, yn_, fraction_)
@@ -91,15 +92,17 @@ function util.loadTypes()
 			if v.basetype then
 				local base = types[v.basetype]
 				if base then
-					types[name] = class(name, base)
+					local t = class(name, base)
+					types[name] = t
 					typesToCreate[name] = nil
-					typesToInit[#typesToInit+1] = {basetype = base, func = v.func}
+					typesToInit[#typesToInit+1] = {type = t, basetype = base, func = v.func}
 					created = created + 1
 				end
 			else
-				types[name] = class(name)
+				local t = class(name)
+				types[name] = t
 				typesToCreate[name] = nil
-				typesToInit[#typesToInit+1] = {func = v.func}
+				typesToInit[#typesToInit+1] = {type = t, func = v.func}
 				created = created + 1
 			end
 		end
@@ -109,6 +112,7 @@ function util.loadTypes()
 		end
 	end
 	for _, v in ipairs(typesToInit) do v.func(v.basetype) end
+	for _, v in ipairs(typesToInit) do if v.type.staticinit then v.type.staticinit() end end
 	function addType(name, basetype, func)
 		local base = basetype and (types[basetype] or error("Couldn't find basetype: "..basetype))
 		types[name] = class(name, base)

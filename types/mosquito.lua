@@ -1,7 +1,6 @@
 addType("mosquito", "baseentity", function(baseentity)
 local mosquito = types.mosquito
 local bloodspray = types.bloodspray
-local animatedSpriteBlurred = types.animatedSpriteBlurred
 
 mosquito.graphic = images["triangle.png"]
 -- mosquito.graphic = images["mosquito.png"]
@@ -19,8 +18,12 @@ mosquito.graphicmap = {
 	{t = 0.8, u1 = 1/3, v1 = 2/3, u2 = 2/3, v2 = 3/3},
 	{t = 0.9, u1 = 3/3, v1 = 2/3, u2 = 3/3, v2 = 3/3},
 }
-mosquito.sprite = animatedSpriteBlurred:new(mosquito.graphic, mosquito.graphicmap)
-mosquito.shape = love.physics.newCircleShape(1)
+
+function mosquito.staticinit()
+	mosquito.sprite = types.animatedSpriteBlurred:new(mosquito.graphic, mosquito.graphicmap)
+	mosquito.shape = love.physics.newCircleShape(1)
+end
+
 function mosquito:initialize(x, y)
 	baseentity.initialize(self, x, y, 0)
 	self.drawCategory = world.drawCategories.foreground

@@ -85,7 +85,7 @@ function borb:mousepressed(x, y, button)
 		if diffx~=diffx then diffx, diffy = 0, 1 end
 		types.featherProjectile:new(self, self.x, self.y, diffx*50, diffy*50):spawn()
 	elseif button == 2 then
-		local mx, my = world.camera.transform:inverseTransformPoint(love.mouse.getPosition())
+		local mx, my = world:screenToWorld(love.mouse.getPosition())
 		types.mosquito:new(mx, my):spawn()
 	end
 end
