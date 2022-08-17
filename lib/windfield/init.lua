@@ -27,7 +27,7 @@ local wf = {}
 wf.Math = require(path .. 'mlib.mlib') 
 
 World = {}
-World.__index = World 
+World.__index = World
 
 function wf.newWorld(xg, yg, sleep)
 	local world = wf.World.new(wf, xg, yg, sleep)
@@ -63,8 +63,17 @@ function World.new(wf, xg, yg, sleep)
 	self.query_debug_draw = {}
 	self.collisionEventColliders = {}
 
-	love.physics.setMeter(1)
 	self.box2d_world = love.physics.newWorld(xg, yg, sleep) 
+
+	local dummy = love.physics.newBody(self.box2d_world)
+	for k, v in pairs(dummy.__index) do 
+		if k ~= '__gc' and k ~= '__eq' and k ~= '__index' and k ~= '__tostring' and k ~= 'destroy' and k ~= 'type' and k ~= 'typeOf' then
+			self.wf.Collider[k] = function(self, ...)
+				return v(self.body, ...)
+			end
+		end
+	end
+	dummy:destroy()
 
 	return setmetatable(self, World)
 end
@@ -524,8 +533,8 @@ function World.collisionPost(fixture_a, fixture_b, contact, ni1, ti1, ni2, ti2)
 	end
 end
 
-function World:newCollider(x, y)
-	return self.wf.Collider.new(self, x, y)
+function World:newCollider(x, y, a)
+	return self.wf.Collider.new(self, x, y, a)
 end
 
 -- Internal AABB box2d query used before going for more specific and precise computations.
@@ -563,6 +572,26 @@ function World:collisionClassInCollisionClassesList(collision_class, collision_c
 			if class == collision_class then return true end
 		end
 	end
+end
+
+function World:queryPoint(x, y, collision_class_names)
+	if not collision_class_names then collision_class_names = {'All'} end
+	if self.query_debug_drawing_enabled then table.insert(self.query_debug_draw, {type = 'circle', x = x, y = y, r = 0.1, frames = self.draw_query_for_n_frames}) end
+	
+	local colliders = self:_queryBoundingBox(x-0.1, y-0.1, x+0.1, y+0.1) 
+	local outs = {}
+	for _, collider in ipairs(colliders) do
+		if self:collisionClassInCollisionClassesList(collider.collision_class, collision_class_names) then
+			local bx, by, ba = collider:getState()
+			for _, fixture in ipairs(collider.body:getFixtures()) do
+				if fixture:getShape():testPoint(bx, by, ba, x, y) then
+					table.insert(outs, collider)
+					break
+				end
+			end
+		end
+	end
+	return outs
 end
 
 function World:queryCircleArea(x, y, radius, collision_class_names)
@@ -663,11 +692,10 @@ function World:destroy()
 end
 
 
-
 local Collider = {}
 Collider.__index = Collider
 
-function Collider.new(world, x, y)
+function Collider.new(world, x, y, a)
 	local self = setmetatable({}, Collider)
 	self.world = world
 	self.object = nil
@@ -682,17 +710,7 @@ function Collider.new(world, x, y)
 	self.stay_collision_data = {}
 	self.collision_class = 'Default'
 	self.body = love.physics.newBody(self.world.box2d_world, x, y, 'dynamic')
-
-	-- Points all body, fixture and shape functions to this wf.Collider object
-	-- This means that the user can call collider:setLinearVelocity for instance without having to say collider.body:setLinearVelocity
-	print("Remember to optimize this")
-	for k, v in pairs(self.body.__index) do 
-		if k ~= '__gc' and k ~= '__eq' and k ~= '__index' and k ~= '__tostring' and k ~= 'destroy' and k ~= 'type' and k ~= 'typeOf' then
-			self[k] = function(self, ...)
-				return v(self.body, ...)
-			end
-		end
-	end
+	self.body:setAngle(a)
 
 	self.preSolve = function() end
 	self.postSolve = function() end
@@ -783,6 +801,20 @@ end
 
 function Collider:getObject()
 	return self.object
+end
+
+function Collider:getAABB()
+	local minx, miny, maxx, maxy = math.huge, math.huge, -math.huge, -math.huge
+	local x, y = self:getPosition()
+	local a = self:getAngle()
+	for _, v in pairs(self.fixtures) do
+		local x1, y1, x2, y2 = v:getShape():computeAABB(x, y, a)
+		minx = math.min(minx, x1)
+		miny = math.min(miny, y1)
+		maxx = math.max(maxx, x2)
+		maxy = math.max(maxy, y2)
+	end
+	return minx, miny, maxx, maxy
 end
 
 function Collider:getState()

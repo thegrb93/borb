@@ -3,7 +3,8 @@ local wf = require("lib/windfield")
 addType("baseentity", nil, function()
 	local baseentity = types.baseentity
 
-	function baseentity:initialize()
+	function baseentity:initialize(x, y, a)
+		self.x, self.y, self.a = x, y, a
 		self.valid = false
 		self.removing = false
 	end
@@ -41,6 +42,7 @@ local world = types.world
 function world:initialize()
 	self.think = self.thinkGame
 	self.dt = 1/winmode.refreshrate
+	self.debug = false
 	self.allEntities = {}
 	self.addents = {}
 	self.rments = {}
@@ -160,9 +162,11 @@ function world:render()
 		ent:draw()
 	end
 
-	-- draw physics meshes
-	love.graphics.setLineWidth(0.01)
-	self.physworld:draw()
+	if self.debug then
+		-- draw physics meshes
+		love.graphics.setLineWidth(0.01)
+		self.physworld:draw()
+	end
 
 	self.camera:pop()
 
@@ -170,19 +174,20 @@ function world:render()
 	worldgui:draw()
 end
 
-function world:getCursorPosition()
-	return self.camera.transform:inverseTransformPoint(love.mouse.getPosition())
+function world:screenToWorld(x, y)
+	return self.camera.transform:inverseTransformPoint(x, y)
+end
+
+function world:worldToScreen(x, y)
+	return self.camera.transform:transformPoint(x, y)
 end
 
 function world:loadLevel(level)
-	local leveldata = world.deserializeLevel(love.filesystem.read(level))
-
-
+	self:deserialize(love.filesystem.read("lvls/"..level..".lvl") or error("Couldn't read level: "..level))
 	hook.call("worldloaded")
 end
 
-function world:serializeLevel(data)
-	local buffer = {}
+function world:serialize(buffer)
 	local ents = {}
 	for ent in pairs(self.allEntities) do
 		if ent.serialize then
@@ -191,23 +196,24 @@ function world:serializeLevel(data)
 	end
 	util.serializeArray(buffer, ents, function(buffer, v)
 		if not v.serialize then error("Type "..v.." is not serializable!") end
+		buffer[#buffer+1] = love.data.pack("string", "<s", v.class.name)
 		v:serialize(buffer)
 	end)
 	return table.concat(buffer)
 end
 
-function world.deserializeLevel(buffer)
-	local ents = util.deserializeArray(buffer, 1, function(buffer, pos)
+function world:deserialize(buffer)
+	util.deserializeArray(buffer, 1, function(buffer, pos)
 		local tname
 		tname, pos = love.data.unpack("<s", buffer, pos)
 		local t = types[tname]
 		if not t then error("Type \""..tname.."\" not found!") end
 		if not t.deserialize then error("Type \""..tname.."\" is not deserializable!") end
-		return t.deserialize(buffer, pos)
+		local e
+		e, pos = t.deserialize(buffer, pos)
+		e:spawn()
+		return e, pos
 	end)
-	return {
-		ents = ents
-	}
 end
 
 end)
@@ -216,3 +222,8 @@ hook.add("postload","world",function()
 	world = types.world:new()
 	types.mainmenu:new()
 end)
+
+function commands.debug()
+	world.debug = not world.debug
+	print("Debug " .. (world.debug and "on" or "off"))
+end

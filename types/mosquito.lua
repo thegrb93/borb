@@ -20,12 +20,13 @@ mosquito.graphicmap = {
 	{t = 0.9, u1 = 3/3, v1 = 2/3, u2 = 3/3, v2 = 3/3},
 }
 mosquito.sprite = animatedSpriteBlurred:new(mosquito.graphic, mosquito.graphicmap)
+mosquito.shape = love.physics.newCircleShape(1)
 function mosquito:initialize(x, y)
-	baseentity.initialize(self)
+	baseentity.initialize(self, x, y, 0)
 	self.drawCategory = world.drawCategories.foreground
-	
+
 	self.targetx, self.targety = x, y
-	self.body = world.physworld:newCircleCollider(x, y, 1)
+	self.body = world.physworld:newCollider(x, y, 0)
 	self.body:setType("dynamic")
 	self.body:setLinearDamping(0)
 	self.body:setAngularDamping(0)
@@ -33,17 +34,17 @@ function mosquito:initialize(x, y)
 	self.body:setObject(self)
 	self.body:setCollisionClass("Enemy")
 	self.body:setGravityScale(0)
-	
+
 	self.body:setPostSolve(function(collider_1, collider_2, contact, normal_impulse1, tangent_impulse1, normal_impulse2, tangent_impulse2)
 		self:postSolve(collider_2:getObject(), contact, normal_impulse1)
 	end)
-	
-	local fixture = self.body.fixtures.Main
+
+	local fixture = self.body:addFixture("Main", mosquito.shape)
 	fixture:setFriction(10)
 	fixture:setRestitution(0.5)
 
 	self.pd = util.newPDController(self.body, 20)
-	
+
 	self.think = mosquito.aliveThink
 	self.draw = mosquito.aliveDraw
 	self.alive = true

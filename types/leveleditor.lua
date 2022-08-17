@@ -1,44 +1,3 @@
-addType("mainmenu", "basegui", function(basegui)
-local mainmenu = types.mainmenu
-
-local controls = [[Controls:
-esc: quit
-1: play
-2: leveleditor
-]]
-
-function mainmenu:initialize()
-	basegui.initialize(self, worldgui, 0, 0, scrw, scrh)
-	self.controls = types.dialoguelistV:new(self, 0, 3)
-	self.controls.padding = 0
-	for _, v in ipairs(string.split(controls, "\n")) do
-		self.controls:add(types.label:new(self.controls, 0, 0, v))
-	end
-	self:setActive()
-end
-
-function mainmenu:keypressed(key)
-	if mainmenu.keypressedCmd[key] then
-		mainmenu.keypressedCmd[key](self)
-	end
-end
-
-mainmenu.keypressedCmd = {
-	["1"] = function(self)
-		world:clear()
-		world:loadLevel("levels/level1.lua")
-	end,
-	["2"] = function(self)
-		world:clear()
-		types.levelEditor:new()
-	end,
-}
-
-function mainmenu:paint()
-end
-end)
-
-
 addType("levelEditor", "basegui", function(basegui)
 local levelEditor = types.levelEditor
 
@@ -59,11 +18,40 @@ function levelEditor:initialize()
 		self.controls:add(types.label:new(self.controls, 0, 0, v))
 	end
 	self.editingtxt = types.label:new(self, 100, 3, "Editing: <new file>")
+	self.selectedEnt = types.entitypanel:new(self)
+	world.think = world.thinkNone
+end
+
+function levelEditor:onClose()
+	world.think = world.thinkGame
 end
 
 function levelEditor:keypressed(key)
 	if levelEditor.keypressedCmd[key] then
 		levelEditor.keypressedCmd[key](self)
+	end
+end
+
+function levelEditor:mousepressed(x, y, button)
+	if button == 1 then
+		x, y = world:screenToWorld(x, y)
+		local sel = world.physworld:queryPoint(x, y)[1]
+		if sel then
+			sel = sel:getObject()
+		else
+			for ent in pairs(world.allEntities) do
+				if ent.x-0.5 < x and ent.y-0.5 < y and x < ent.x+0.5 and y < ent.y+0.5 then
+					sel = ent
+					break
+				end
+			end
+		end
+		if sel then
+			self.selectedEnt.hidden = false
+			self.selectedEnt:setEntity(sel)
+		else
+			self.selectedEnt.hidden = true
+		end
 	end
 end
 
@@ -124,33 +112,48 @@ end
 function levelEditor:save(name)
 	self.filename = name
 	self.editingtxt:setText("Editing: "..name)
+	local buffer = {}
+	world:serialize(buffer)
+	love.filesystem.write("lvls/"..name..".lvl", table.concat(buffer))
 end
 
 function levelEditor:load(name)
 	self.filename = name
 	self.editingtxt:setText("Editing: "..name)
+	world:loadLevel(name)
 end
 
 function levelEditor:addEntity(name)
 	local t = types[name]
 	if t and t:isSubclassOf(types.baseentity) then
 		local x, y = love.mouse.getPosition()
-		local wx, wy = world:getCursorPosition()
+		local wx, wy = world:screenToWorld(x, y)
 		if t.properties then
 			local props = types.propertiespanel:new(self, x, y, "Creating: "..name, t.properties)
+			props.draggable = true
 			function props.onSubmit(_, d)
 				if d then
-					util.pcall(function() t:new(wx, wy, 0, unpack(d)):spawn() end)
+					util.pcall(function() self:setupEntity(t:new(wx, wy, 0, unpack(d))) end)
 				end
 				self:setActive()
 			end
 		else
-			util.pcall(function() t:new(wx, wy, 0):spawn() end)
+			util.pcall(function() self:setupEntity(t:new(wx, wy, 0)) end)
 		end
 	else
 		print("Type "..name.." doesn't exist or isn't a baseentity!")
 	end
 end
 
-end)
+function levelEditor:setupEntity(ent)
+	if not ent.draw then
+		function ent:draw()
+			love.graphics.setColor(1,0,0)
+			love.graphics.rectangle("fill",self.x-0.5,self.y-0.5,1,1)
+		end
+		ent.drawCategory = world.drawCategories.foreground
+	end
+	ent:spawn()
+end
 
+end)

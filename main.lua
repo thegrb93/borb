@@ -1,4 +1,7 @@
 scrw, scrh, winmode = love.window.getMode()
+love.physics.setMeter(1)
+love.keyboard.setTextInput(false)
+
 class = require("lib/middleclass")
 hook = require("lib/hook")
 scheduler = require("lib/scheduler")()
@@ -26,8 +29,6 @@ util = require("lib/util")
 util.loadTypes()
 
 function love.run()
-	-- love.load(love.arg.parseGameArguments(arg), arg)
-	love.keyboard.setTextInput(false)
 	hook.call("postload")
 
 	-- Main loop time.

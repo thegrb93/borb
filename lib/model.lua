@@ -6,57 +6,62 @@ function model:initialize(name)
 	if not buffer then error("Couldn't load model: "..path) end
 	self:deserialize(buffer, 1)
 
-	for _, model in ipairs(self.models) do
-		model.meshes = {}
-		for id, group in ipairs(model.groups) do
+	for _, meshgroup in ipairs(self.meshgroups) do
+		for id, quads in ipairs(meshgroup.meshes) do
 			local vertices = {}
-			for _, face in ipairs(group) do
-				vertices[#vertices+1] = model.vertices[face[1]]
-				vertices[#vertices+1] = model.vertices[face[2]]
-				vertices[#vertices+1] = model.vertices[face[3]]
-				vertices[#vertices+1] = model.vertices[face[1]]
-				vertices[#vertices+1] = model.vertices[face[3]]
-				vertices[#vertices+1] = model.vertices[face[4]]
+			for _, quad in ipairs(quads) do
+				vertices[#vertices+1] = meshgroup.vertices[quad[1]]
+				vertices[#vertices+1] = meshgroup.vertices[quad[2]]
+				vertices[#vertices+1] = meshgroup.vertices[quad[3]]
+				vertices[#vertices+1] = meshgroup.vertices[quad[1]]
+				vertices[#vertices+1] = meshgroup.vertices[quad[3]]
+				vertices[#vertices+1] = meshgroup.vertices[quad[4]]
 			end
 			local mesh = love.graphics.newMesh(vertices, "triangles", "static")
-			mesh:setTexture(images[model.materials[id]])
-			model.meshes[id] = mesh
+			local tex = images[meshgroup.materials[id]]
+			tex:setWrap("repeat","repeat")
+			mesh:setTexture(tex)
+			quads.mesh = mesh
 		end
 	end
 	for _, shape in ipairs(self.shapes) do
 		if shape.type=="quadmesh" then
 			local shapes = {}
-			for _, group in ipairs(self.models[shape.mesh]) do
-				for _, face in ipairs(group) do
-					local a = model.vertices[face[1]]
-					local b = model.vertices[face[2]]
-					local c = model.vertices[face[3]]
-					local d = model.vertices[face[4]]
+			local meshgroup = self.meshgroups[shape.meshgroup]
+			for _, quads in ipairs(meshgroup.meshes) do
+				for _, quad in ipairs(quads) do
+					local a = meshgroup.vertices[quad[1]]
+					local b = meshgroup.vertices[quad[2]]
+					local c = meshgroup.vertices[quad[3]]
+					local d = meshgroup.vertices[quad[4]]
 					shapes[#shapes+1] = love.physics.newPolygonShape(a[1], a[2], b[1], b[2], c[1], c[2], d[1], d[2])
 				end
 			end
 			shape.shapes = shapes
+		else
+			error("Invalid shape: "..shape.type)
 		end
 	end
 end
 
-function model:createBodies()
+function model:createBodies(ent)
 	local bodies = {}
 	for k, v in ipairs(self.bodies) do
-		local body = world.physworld:newCollider()
+		local body = world.physworld:newCollider(ent.x, ent.y, ent.a)
+		body:setObject(ent)
 		body:setType(v.type)
-		body.model = self.models[v.model]
+		body.meshgroup = self.meshgroups[v.meshgroup]
 		for _, fixtureInd in ipairs(v.fixtures) do
 			self:attachFixture(body, self.fixtures[fixtureInd])
 		end
 		bodies[k] = body
 	end
-	return bodies
+	ent.bodies = bodies
 end
 
 function model:attachFixture(body, fixture)
 	local shape = self.shapes[fixture.shape]
-	if shape.type == "meshquad" then
+	if shape.type == "quadmesh" then
 		for k, v in ipairs(shape.shapes) do
 			local f = body:addFixture(k, v)
 		end
@@ -66,28 +71,28 @@ end
 function model:draw(body)
 	local x, y = body:getPosition()
 	local a = body:getAngle()
-	for k, v in ipairs(body.model.meshes) do
-		love.graphics.draw(v, x, y, a)
+	for k, v in ipairs(body.meshgroup.meshes) do
+		love.graphics.draw(v.mesh, x, y, a)
 	end
 end
 
 function model:serialize(buffer)
 	buffer[#buffer+1] = love.data.pack("string", "<s", self.name)
-	util.serializeArray(buffer, self.models, function(buffer, mesh)
-		util.serializeArray(buffer, mesh.groups, function(buffer, faces)
+	util.serializeArray(buffer, self.meshgroups, function(buffer, meshgroup)
+		util.serializeArray(buffer, meshgroup.meshes, function(buffer, faces)
 			util.serializeArray(buffer, faces, function(buffer, face)
 				buffer[#buffer+1] = love.data.pack("string", "<LLLL", unpack(face))
 			end)
 		end)
-		util.serializeArray(buffer, mesh.vertices, function(buffer, vert)
+		util.serializeArray(buffer, meshgroup.vertices, function(buffer, vert)
 			buffer[#buffer+1] = love.data.pack("string", "<ffffffff", unpack(vert))
 		end)
-		util.serializeArray(buffer, mesh.materials, function(buffer, str)
+		util.serializeArray(buffer, meshgroup.materials, function(buffer, str)
 			buffer[#buffer+1] = love.data.pack("string", "<s", str)
 		end)
 	end)
 	util.serializeArray(buffer, self.bodies, function(buffer, body)
-		buffer[#buffer+1] = love.data.pack("string", "<sL", body.type, body.model)
+		buffer[#buffer+1] = love.data.pack("string", "<sL", body.type, body.meshgroup)
 		util.serializeArray(buffer, body.fixtures, function(buffer, fixture)
 			buffer[#buffer+1] = love.data.pack("string", "<L", fixture)
 		end)
@@ -95,7 +100,7 @@ function model:serialize(buffer)
 	util.serializeArray(buffer, self.shapes, function(buffer, shape)
 		buffer[#buffer+1] = love.data.pack("string", "<s", shape.type)
 		if shape.type=="quadmesh" then
-			buffer[#buffer+1] = love.data.pack("string", "<L", shape.mesh)
+			buffer[#buffer+1] = love.data.pack("string", "<L", shape.meshgroup)
 		else
 			error("Unsupported shape type: "..shape.type)
 		end
@@ -107,9 +112,9 @@ end
 
 function model:deserialize(buffer, pos)
 	self.name, pos = love.data.unpack("<s", buffer, pos)
-	self.models, pos = util.deserializeArray(buffer, pos, function(buffer, pos)
+	self.meshgroups, pos = util.deserializeArray(buffer, pos, function(buffer, pos)
 		local mesh = {}
-		mesh.groups, pos = util.deserializeArray(buffer, pos, function(buffer, pos)
+		mesh.meshes, pos = util.deserializeArray(buffer, pos, function(buffer, pos)
 			return util.deserializeArray(buffer, pos, function(buffer, pos)
 				local a, b, c, d
 				a, b, c, d, pos = love.data.unpack("<LLLL", buffer, pos)
@@ -128,7 +133,7 @@ function model:deserialize(buffer, pos)
 	end)
 	self.bodies, pos = util.deserializeArray(buffer, pos, function(buffer, pos)
 		local body = {}
-		body.type, body.model, pos = love.data.unpack("<sL", buffer, pos)
+		body.type, body.meshgroup, pos = love.data.unpack("<sL", buffer, pos)
 		body.fixtures, pos = util.deserializeArray(buffer, pos, function(buffer, pos)
 			return love.data.unpack("<L", buffer, pos)
 		end)
@@ -138,7 +143,7 @@ function model:deserialize(buffer, pos)
 		local shape = {}
 		shape.type, pos = love.data.unpack("<s", buffer, pos)
 		if shape.type == "quadmesh" then
-			shape.mesh, pos = love.data.unpack("<L", buffer, pos)
+			shape.meshgroup, pos = love.data.unpack("<L", buffer, pos)
 		else
 			error("Unsupported shape type: "..shape.type)
 		end
@@ -165,7 +170,7 @@ function model.loadPly(name)
 	end
 	local fmt = "<"..string.rep("f",propertyidx-1)
 
-	local groups = setmetatable({},{__index=function(t,k) local r={} t[k] = r return r end})
+	local meshes = setmetatable({},{__index=function(t,k) local r={} t[k] = r return r end})
 	local vertices = {}
 	local nverts = string.match(data, "element vertex (%d+)") or error("Couldn't find vertex count in ply: "..path)
 	local nfaces = string.match(data, "element face (%d+)") or error("Couldn't find face count in ply: "..path)
@@ -178,20 +183,20 @@ function model.loadPly(name)
 	local count, mat, a, b, c, d
 	for i=1, nfaces do
 		count, mat, a, b, c, d, index = love.data.unpack("<BLLLLL", data, index)
-		local faces = groups[mat+1]
-		faces[#faces+1] = {a+1, b+1, c+1, d+1}
+		local quads = meshes[mat+1]
+		quads[#quads+1] = {a+1, b+1, c+1, d+1}
 	end
-	return setmetatable(groups, nil), vertices
+	return setmetatable(meshes, nil), vertices
 end
 
 function commands.model(name)
 	local script = love.filesystem.load("rawmdl/"..name..".lua")
 	local env = {}
-	function env.mesh(data)
-		local groups, vertices = model.loadPly(data.path)
-		if #groups ~= #data.materials then error("Number of meshs doesn't match number of defined materials!") end
+	function env.meshgroup(data)
+		local meshes, vertices = model.loadPly(data.path)
+		if #meshes ~= #data.materials then error("Number of meshs doesn't match number of defined materials!") end
 		data.path = nil
-		data.groups = groups
+		data.meshes = meshes
 		data.vertices = vertices
 		return data
 	end

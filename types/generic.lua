@@ -1,19 +1,28 @@
 addType("spawn", "baseentity", function(baseentity)
 local spawn = types.spawn
 
-function spawn:initialize(data)
-	baseentity.initialize(self)
-	self.spawnpoint = {x = data.center.x, y = -data.center.y}
+function spawn:initialize(x, y)
+	baseentity.initialize(self, x, y, 0)
 	hook.add("worldloaded", self)
 end
 
-function spawn:destroy()
+function spawn:onRemove()
 	hook.remove("worldloaded", self)
 end
 
 function spawn:worldloaded()
-	world.player = types.borb:new(self.spawnpoint.x, self.spawnpoint.y, 1.5)
+	world.player = types.borb:new(self.x, self.y, 0)
 	world.player:spawn()
+end
+
+function spawn:serialize(buffer)
+	buffer[#buffer+1] = love.data.pack("string", "<dd", self.x, self.y)
+end
+
+function spawn.deserialize(buffer, pos)
+	local x, y
+	x, y, pos = love.data.unpack("<dd", buffer, pos)
+	return spawn:new(x, y), pos
 end
 
 end)
@@ -29,7 +38,7 @@ function spike:initialize(body, data)
 	self.x, self.y = data.center.x, -data.center.y
 end
 
-function spike:draw(data)
+function spike:draw()
 	
 end
 
@@ -59,29 +68,27 @@ prop.properties = {
 	{name = "model"}
 }
 
-function prop:initialize(x, y, a, model)
-	baseentity.initialize(self)
+function prop:initialize(x, y, a, modelName)
+	baseentity.initialize(self, x, y, a)
 	self.drawCategory = world.drawCategories.foreground
-	self.x, self.y, self.a = x, y, a
-	self.model = models[model]
-	self.bodies = self.model:createBodies()
-	self.bodies[1]:setPosition(x, y)
+	self.modelName = modelName
+	self.model = models[modelName]
+	self.model:createBodies(self)
 end
 
 function prop:draw()
-	for _, v in ipairs(self.bodies) do
-		self.model:draw(v)
-	end
+	love.graphics.setColor(1,1,1)
+	self.model:draw(self.bodies[1])
 end
 
 function prop:serialize(buffer)
-	buffer[#buffer+1] = love.data.pack("string", "<ddds", self.x, self.y, self.a, self.model)
+	buffer[#buffer+1] = love.data.pack("string", "<ddds", self.x, self.y, self.a, self.modelName)
 end
 
 function prop.deserialize(buffer, pos)
-	local x, y, a, model
-	x, y, a, model, pos = love.data.unpack("<ddds", buffer, pos)
-	return prop:new(x, y, a, model), pos
+	local x, y, a, modelName
+	x, y, a, modelName, pos = love.data.unpack("<ddds", buffer, pos)
+	return prop:new(x, y, a, modelName), pos
 end
 
 end)

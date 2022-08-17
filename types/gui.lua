@@ -57,9 +57,9 @@ function basegui:mouseInside(mx, my)
 		my = my - self.y
 		for _, v in ipairs(self.children) do
 			local found, x, y = v:mouseInside(mx, my)
-			if found then return found, x, y end
+			if found then return found end
 		end
-		return self, mx, my
+		return self
 	end
 end
 
@@ -94,6 +94,26 @@ function basegui:sizeToContents()
 	self.h = maxh
 end
 
+function basegui:localToWorld(x, y)
+	local cur = self
+	repeat
+		x = x + cur.x
+		y = y + cur.y
+		cur = cur.parent
+	until cur == worldgui
+	return x, y
+end
+
+function basegui:worldToLocal(x, y)
+	local cur = self
+	repeat
+		x = x - cur.x
+		y = y - cur.y
+		cur = cur.parent
+	until cur == worldgui
+	return x, y
+end
+
 function basegui:centerW()
 	self.x = self.parent.w*0.5 - self.w*0.5
 end
@@ -121,6 +141,8 @@ function worldgui:initialize()
 	hook.add("keypressed", self)
 	hook.add("textinput", self)
 	hook.add("mousepressed", self)
+	hook.add("mousereleased", self)
+	hook.add("mousemoved", self)
 end
 
 function worldgui:draw()
@@ -147,17 +169,28 @@ function worldgui:textinput(key)
 end
 
 function worldgui:mousepressed(x, y, button)
-	local gui
-	gui, x, y = self:mouseInside(x, y)
+	local gui = self:mouseInside(x, y)
 	if gui then
 		if gui==self then
 			self:setActive()
 		else
 			gui:setActive()
 			if gui.mousepressed then
-				gui:mousepressed(x, y)
+				gui:mousepressed(x, y, button)
 			end
 		end
+	end
+end
+
+function worldgui:mousereleased(x, y, button)
+	if self.activegui~=self and self.activegui.mousereleased then
+		self.activegui:mousereleased(x, y, button)
+	end
+end
+
+function worldgui:mousemoved(x, y, dx, dy)
+	if self.activegui~=self and self.activegui.mousemoved then
+		self.activegui:mousemoved(x, y, dx, dy)
 	end
 end
 
@@ -177,11 +210,37 @@ local panel = types.panel
 function panel:initialize(parent, x, y, w, h, title)
 	basegui.initialize(self, parent, x, y, w, h)
 	self.color = skin.panelBg
+	self.draggable = false
 end
 
 function panel:paint()
 	love.graphics.setColor(self.color)
 	love.graphics.rectangle("fill", self.x, self.y, self.w, self.h)
+end
+
+function panel:mousepressed(x, y, button)
+	if self.draggable and button==1 then
+		self.dragging = true
+		self.dragx = self.x - x
+		self.dragy = self.y - y
+	end
+end
+
+function panel:mousereleased(x, y, button)
+	if self.draggable and button==1 then
+		self.dragging = false
+	end
+end
+
+function panel:mousemoved(x, y)
+	if self.dragging then
+		self.x = self.dragx + x
+		self.y = self.dragy + y
+	end
+end
+
+function panel:setInactive()
+	self.dragging = false
 end
 end)
 
@@ -344,8 +403,11 @@ local propertiespanel = types.propertiespanel
 
 function propertiespanel:initialize(parent, x, y, title, properties)
 	panel.initialize(self, parent, x, y, 0, 0)
-	self.dialogue = types.dialoguelistV:new(self, 0, 0)
+	self.dialogue = types.dialoguelistV:new(self, 0, 8)
 	self.dialogue:add(types.label:new(self.dialogue, 0, 0, title))
+	self.dialogue.mousepressed = self.mousepressed
+	self.dialogue.mousereleased = self.mousereleased
+	self.dialogue.mousemoved = self.mousemoved
 
 	self.list = types.dialoguelistV:new(self.dialogue, 0, 0)
 
@@ -385,6 +447,73 @@ function propertiespanel:submit()
 end
 
 function propertiespanel:onSubmit(data)
+end
+end)
+
+addType("entitypanel", "panel", function(panel)
+local entitypanel = types.entitypanel
+
+function entitypanel:initialize(parent)
+	panel.initialize(self, parent, x, y, 0, 0)
+	self.hidden = true
+	self.color = {0.5, 0.5, 0.5, 0.08}
+	self.dialogue = types.dialoguelistV:new(self, 0, 8)
+	self.dialogue:add(types.label:new(self.dialogue, 0, 0, ""))
+
+	local controls = types.dialoguelistH:new(self.dialogue, 0, 10)
+	self.dialogue:add(controls)
+end
+
+function entitypanel:setEntity(ent)
+	self.ent = ent
+	self.dialogue.children[1]:setText(ent.name)
+
+	if ent.bodies then
+		local x1, y1, x2, y2 = ent.bodies[1]:getAABB()
+		x1, y1 = world:worldToScreen(x1, y1)
+		x2, y2 = world:worldToScreen(x2, y2)
+		self.x, self.y, self.w, self.h = x1, y1, x2 - x1, y2 - y1
+	else
+		local x1, y1 = world:worldToScreen(ent.x-0.5, ent.y-0.5)
+		local x2, y2 = world:worldToScreen(ent.x+0.5, ent.y+0.5)
+		self.x, self.y, self.w, self.h = x1, y1, x2 - x1, y2 - y1
+	end
+end
+
+function entitypanel:mousepressed(x, y, button)
+	if button==1 then
+		local wx, wy = world:screenToWorld(x, y)
+		local bx, by
+		if self.ent.bodies then
+			bx, by = self.ent.bodies[1]:getPosition()
+		else
+			bx, by = self.ent.x, self.ent.y
+		end
+		self.dragging = true
+		self.dragx = self.x - x
+		self.dragy = self.y - y
+		self.entdragx = bx - wx
+		self.entdragy = by - wy
+	end
+end
+
+function entitypanel:mousereleased(x, y, button)
+	if button==1 then
+		self.dragging = false
+	end
+end
+
+function entitypanel:mousemoved(x, y)
+	if self.dragging then
+		self.x = self.dragx + x
+		self.y = self.dragy + y
+		local wx, wy = world:screenToWorld(x, y)
+		if self.ent.bodies then
+			self.ent.bodies[1]:setPosition(self.entdragx + wx, self.entdragy + wy)
+		else
+			self.ent.x, self.ent.y = self.entdragx + wx, self.entdragy + wy
+		end
+	end
 end
 
 end)
