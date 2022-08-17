@@ -51,13 +51,13 @@ end
 function util.traceLine(x1, y1, x2, y2, filter)
 	if x1==x2 and y1==y2 then return end
 	if filter==nil then filter = function() return true end end
-	local fixture, x, y, xn, yn, fraction
+	local fixture, x, y, xn, yn
+	local fraction = math.huge
 	world.physworld.box2d_world:rayCast(x1, y1, x2, y2, function(fixture_, x_, y_, xn_, yn_, fraction_)
-		if filter(fixture_) then
+		if filter(fixture_) and fraction_ < fraction then
 			fixture, x, y, xn, yn, fraction = fixture_, x_, y_, xn_, yn_, fraction_
-			return 0
 		end
-		return -1
+		return 1
 	end)
 	return fixture, x, y, xn, yn, fraction
 end

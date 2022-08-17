@@ -182,9 +182,11 @@ function world:worldToScreen(x, y)
 	return self.camera.transform:transformPoint(x, y)
 end
 
-function world:loadLevel(level)
+function world:loadLevel(level, nostart)
 	self:deserialize(love.filesystem.read("lvls/"..level..".lvl") or error("Couldn't read level: "..level))
-	hook.call("worldloaded")
+	if not nostart then
+		hook.call("worldloaded")
+	end
 end
 
 function world:serialize(buffer)

@@ -200,3 +200,18 @@ function animatedSpriteBlurred:draw(t, tlen, ...)
 end
 
 end)
+
+addType("debugpoint", "baseentity", function(baseentity)
+local debugpoint = types.debugpoint
+
+function debugpoint:initialize(x, y, color)
+	baseentity.initialize(self, x, y, 0)
+	self.drawCategory = world.drawCategories.foreground
+	self.color = color
+end
+
+function debugpoint:draw()
+	love.graphics.setColor(self.color)
+	love.graphics.rectangle("fill", self.x-0.03, self.y-0.03, 0.06, 0.06)
+end
+end)

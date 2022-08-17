@@ -40,7 +40,7 @@ function levelEditor:mousepressed(x, y, button)
 			sel = sel:getObject()
 		else
 			for ent in pairs(world.allEntities) do
-				if ent.x-0.5 < x and ent.y-0.5 < y and x < ent.x+0.5 and y < ent.y+0.5 then
+				if not ent.bodies and ent.x and ent.x-0.5 < x and ent.y-0.5 < y and x < ent.x+0.5 and y < ent.y+0.5 then
 					sel = ent
 					break
 				end
@@ -120,7 +120,7 @@ end
 function levelEditor:load(name)
 	self.filename = name
 	self.editingtxt:setText("Editing: "..name)
-	world:loadLevel(name)
+	world:loadLevel(name, true)
 end
 
 function levelEditor:addEntity(name)

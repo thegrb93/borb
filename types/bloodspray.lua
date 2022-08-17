@@ -79,7 +79,7 @@ function bloodspray:buildBlood(blood, x, y, xn, yn)
 	blood.a = math.vecToAng(xn, yn)
 	
 	local custom, leftW, rightW = false, puddleW, puddleW
-	local x2, y2 = x+xn*0.005, y+xn*0.005
+	local x2, y2 = x+xn*0.005, y+yn*0.005
 	do
 		local xn2, yn2 = math.rotVecCCW(xn, yn)
 		local W = self:findBloodEdge(x2, y2, xn, yn, xn2, yn2)
@@ -124,20 +124,20 @@ function bloodspray:buildBlood(blood, x, y, xn, yn)
 end
 
 function bloodspray:findBloodEdge(x2, y2, xn, yn, xn2, yn2)
-	local hit, x3, y3, xn3, yn3, frac = util.traceLine(x2, y2, x2+xn2*puddleW, y2+yn2*puddleW, bloodspray.collideFilter)
+	local hit, _, _, _, _, frac = util.traceLine(x2, y2, x2+xn2*puddleW, y2+yn2*puddleW, bloodspray.collideFilter)
 	if hit then
 		return puddleW*util.binarySearch(0, frac, 6, function(t)
 			local x4, y4 = x2+xn2*puddleW*t, y2+yn2*puddleW*t
-			local hit2 = util.traceLine(x4, y4, x4-xn*0.006, y4-xn*0.006, bloodspray.collideFilter)
+			local hit2 = util.traceLine(x4, y4, x4-xn*0.006, y4-yn*0.006, bloodspray.collideFilter)
 			return hit2~=nil
 		end)
 	else
 		local x4, y4 = x2+xn2*puddleW, y2+yn2*puddleW
-		local hit2 = util.traceLine(x4, y4, x4-xn*0.006, y4-xn*0.006, bloodspray.collideFilter)
+		local hit2 = util.traceLine(x4, y4, x4-xn*0.006, y4-yn*0.006, bloodspray.collideFilter)
 		if hit2==nil then
 			return puddleW*util.binarySearch(0, 1, 6, function(t)
 				local x4, y4 = x2+xn2*puddleW*t, y2+yn2*puddleW*t
-				local hit3 = util.traceLine(x4, y4, x4-xn*0.006, y4-xn*0.006, bloodspray.collideFilter)
+				local hit3 = util.traceLine(x4, y4, x4-xn*0.006, y4-yn*0.006, bloodspray.collideFilter)
 				return hit3~=nil
 			end)
 		end
