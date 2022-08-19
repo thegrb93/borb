@@ -155,6 +155,14 @@ function util.deserializeArray(buffer, pos, func)
 	return tbl, pos
 end
 
+function util.contactNormal(obj, contact)
+	local f1, f2 = contact:getFixtures()
+	f1, f2 = f1:getUserData():getObject(), f2:getUserData():getObject()
+	local nx, ny = contact:getNormal()
+	if obj==f2 then nx = -nx ny = -ny end
+	return nx, ny
+end
+
 function math.normalizeVec(x, y)
 	local l = math.sqrt(x^2+y^2)
 	return x/l, y/l
@@ -174,6 +182,18 @@ end
 
 function math.clamp(x, min, max)
 	return math.max(math.min(x, max), min)
+end
+
+function math.round(x)
+	if x >= 0 then
+		return math.floor(x+0.5)
+	else
+		return math.ceil(x-0.5)
+	end
+end
+
+function math.roundBy(x, interval)
+	return math.round(x / interval)*interval
 end
 
 function math.angnorm(x)

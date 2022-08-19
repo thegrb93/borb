@@ -65,7 +65,7 @@ function mosquito:postSolve(other, contact, normal_impulse)
 end
 
 function mosquito:onDamage(x, y, xn, yn)
-	bloodspray:new(x, y, xn*10, yn*10):spawn()
+	bloodspray:new(x, y, xn*30, yn*30):spawn()
 	self.body:setGravityScale(1)
 	self.think = self.deadThink
 	self.draw = self.deadDraw

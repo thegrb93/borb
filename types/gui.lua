@@ -143,6 +143,7 @@ function worldgui:initialize()
 	hook.add("mousepressed", self)
 	hook.add("mousereleased", self)
 	hook.add("mousemoved", self)
+	hook.add("wheelmoved", self)
 end
 
 function worldgui:draw()
@@ -191,6 +192,12 @@ end
 function worldgui:mousemoved(x, y, dx, dy)
 	if self.activegui~=self and self.activegui.mousemoved then
 		self.activegui:mousemoved(x, y, dx, dy)
+	end
+end
+
+function worldgui:wheelmoved(x, y, dx, dy)
+	if self.activegui~=self and self.activegui.wheelmoved then
+		self.activegui:wheelmoved(x, y, dx, dy)
 	end
 end
 

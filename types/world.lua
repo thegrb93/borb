@@ -154,6 +154,7 @@ function world:render()
 	self.backcamera:pop()
 
 	-- Draw foreground entities
+	self.camera:update()
 	self.camera:push()
 	for _, ent in ipairs(self.drawents[2]) do
 		ent:draw()

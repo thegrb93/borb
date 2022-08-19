@@ -18,6 +18,12 @@ function levelEditor:initialize()
 		self.controls:add(types.label:new(self.controls, 0, 0, v))
 	end
 	self.editingtxt = types.label:new(self, 100, 3, "Editing: <new file>")
+	self.zoomscroll = 0
+	self.cameratxt = types.label:new(self, 250, 3, "")
+	function self.cameratxt.update(txt)
+		txt:setText("Camera: x("..string.format("%.1f",world.camera.x).."), y("..string.format("%.1f",world.camera.y).."), zoom("..string.format("%.0f",100*0.95^self.zoomscroll).."%)")
+	end
+	self.cameratxt:update()
 	self.selectedEnt = types.entitypanel:new(self)
 	world.think = world.thinkNone
 end
@@ -106,7 +112,27 @@ levelEditor.keypressedCmd = {
 	end
 }
 
+function levelEditor:wheelmoved(_, y)
+	self.zoomscroll =  self.zoomscroll + y
+	world.camera.zoom = 25*0.95^self.zoomscroll
+	self.cameratxt:update()
+end
+
 function levelEditor:paint()
+	if love.keyboard.isDown("up") then
+		world.camera.y = world.camera.y - 10/world.camera.zoom
+		self.cameratxt:update()
+	elseif love.keyboard.isDown("down") then
+		world.camera.y = world.camera.y + 10/world.camera.zoom
+		self.cameratxt:update()
+	end
+	if love.keyboard.isDown("left") then
+		world.camera.x = world.camera.x - 10/world.camera.zoom
+		self.cameratxt:update()
+	elseif love.keyboard.isDown("right") then
+		world.camera.x = world.camera.x + 10/world.camera.zoom
+		self.cameratxt:update()
+	end
 end
 
 function levelEditor:save(name)
@@ -121,6 +147,15 @@ function levelEditor:load(name)
 	self.filename = name
 	self.editingtxt:setText("Editing: "..name)
 	world:loadLevel(name, true)
+	for ent in pairs(world.allEntities) do
+		if not ent.draw then
+			function ent:draw()
+				love.graphics.setColor(1,0,0)
+				love.graphics.rectangle("fill",self.x-0.5,self.y-0.5,1,1)
+			end
+			ent.drawCategory = world.drawCategories.foreground
+		end
+	end
 end
 
 function levelEditor:addEntity(name)

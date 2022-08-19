@@ -82,7 +82,8 @@ function prop:draw()
 end
 
 function prop:serialize(buffer)
-	buffer[#buffer+1] = love.data.pack("string", "<ddds", self.x, self.y, self.a, self.modelName)
+	local x, y, a = self.bodies[1]:getState()
+	buffer[#buffer+1] = love.data.pack("string", "<ddds", x, y, a, self.modelName)
 end
 
 function prop.deserialize(buffer, pos)

@@ -285,7 +285,7 @@ function featherProjectile:initialize(borb, x, y, dx, dy)
 	self.body:setObject(self)
 	self.body:setCollisionClass("Player")
 	self.body:setPostSolve(function(collider_1, collider_2, contact, normal_impulse1, tangent_impulse1, normal_impulse2, tangent_impulse2)
-		self:postSolve(collider_2:getObject(), contact)
+		self:postSolve(collider_2:getObject(), contact, normal_impulse1, tangent_impulse1, normal_impulse2, tangent_impulse2)
 	end)
 	self.bodies = {self.body}
 
@@ -296,10 +296,10 @@ function featherProjectile:initialize(borb, x, y, dx, dy)
 	self.pd = util.newPDController(self.body, 300)
 end
 
-function featherProjectile:postSolve(other, contact)
+function featherProjectile:postSolve(other, contact, normal_impulse1, tangent_impulse1, normal_impulse2, tangent_impulse2)
 	if other and other.onDamage then
 		local x, y = contact:getPositions()
-		local xn, yn = contact:getNormal()
+		local xn, yn = util.contactNormal(self, contact)
 		other:onDamage(x, y, xn, yn)
 	end
 	self:remove()
