@@ -113,7 +113,7 @@ levelEditor.keypressedCmd = {
 }
 
 function levelEditor:wheelmoved(_, y)
-	self.zoomscroll =  self.zoomscroll + y
+	self.zoomscroll =  self.zoomscroll - y
 	world.camera.zoom = 25*0.95^self.zoomscroll
 	self.cameratxt:update()
 end
@@ -133,6 +133,10 @@ function levelEditor:paint()
 		world.camera.x = world.camera.x + 10/world.camera.zoom
 		self.cameratxt:update()
 	end
+	love.graphics.setColor(1,1,1)
+	for ent in pairs(world.allEntities) do
+		love.graphics.print(ent.class.name, world:worldToScreen(ent:getPos()))
+	end
 end
 
 function levelEditor:save(name)
@@ -148,13 +152,7 @@ function levelEditor:load(name)
 	self.editingtxt:setText("Editing: "..name)
 	world:loadLevel(name, true)
 	for ent in pairs(world.allEntities) do
-		if not ent.draw then
-			function ent:draw()
-				love.graphics.setColor(1,0,0)
-				love.graphics.rectangle("fill",self.x-0.5,self.y-0.5,1,1)
-			end
-			ent.drawCategory = world.drawCategories.foreground
-		end
+		self:setupEntity(ent)
 	end
 end
 
@@ -168,12 +166,12 @@ function levelEditor:addEntity(name)
 			props.draggable = true
 			function props.onSubmit(_, d)
 				if d then
-					util.pcall(function() self:setupEntity(t:new(wx, wy, 0, unpack(d))) end)
+					util.pcall(function() self:setupEntity(t:new(wx, wy, 0, unpack(d)):spawn()) end)
 				end
 				self:setActive()
 			end
 		else
-			util.pcall(function() self:setupEntity(t:new(wx, wy, 0)) end)
+			util.pcall(function() self:setupEntity(t:new(wx, wy, 0):spawn()) end)
 		end
 	else
 		print("Type "..name.." doesn't exist or isn't a baseentity!")
@@ -188,7 +186,6 @@ function levelEditor:setupEntity(ent)
 		end
 		ent.drawCategory = world.drawCategories.foreground
 	end
-	ent:spawn()
 end
 
 end)

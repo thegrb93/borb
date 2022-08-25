@@ -9,12 +9,17 @@ addType("baseentity", nil, function()
 		self.removing = false
 	end
 
+	function baseentity:getPos()
+		return self.x, self.y
+	end
+
 	function baseentity:spawn()
 		if not self.removing then
 			self.valid = true
 			world.addents[self] = true
 			world.allEntities[self] = true
 		end
+		return self
 	end
 
 	function baseentity:remove()

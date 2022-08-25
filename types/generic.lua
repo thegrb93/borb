@@ -81,6 +81,16 @@ function prop:draw()
 	self.model:draw(self.bodies[1])
 end
 
+function prop:onRemove()
+	for _, v in ipairs(self.bodies) do
+		v:destroy()
+	end
+end
+
+function prop:getPos()
+	return self.bodies[1]:getPosition()
+end
+
 function prop:serialize(buffer)
 	local x, y, a = self.bodies[1]:getState()
 	buffer[#buffer+1] = love.data.pack("string", "<ddds", x, y, a, self.modelName)

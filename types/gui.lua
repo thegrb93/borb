@@ -464,17 +464,25 @@ function entitypanel:initialize(parent)
 	panel.initialize(self, parent, x, y, 0, 0)
 	self.hidden = true
 	self.color = {0.5, 0.5, 0.5, 0.08}
-	self.dialogue = types.dialoguelistV:new(self, 0, 8)
-	self.dialogue:add(types.label:new(self.dialogue, 0, 0, ""))
+	self.dialogue = types.dialoguelistV:new(self, 0, 0)
 
-	local controls = types.dialoguelistH:new(self.dialogue, 0, 10)
-	self.dialogue:add(controls)
+	self.controls = types.dialoguelistH:new(self.dialogue, 0, 0)
+	local delete = types.label:new(self.controls, 0, 0, "X")
+	function delete.mousepressed()
+		self.ent:remove()
+		self.hidden = true
+	end
+	self.controls:add(delete)
+
+	self.dialogue:add(self.controls)
 end
 
 function entitypanel:setEntity(ent)
 	self.ent = ent
-	self.dialogue.children[1]:setText(ent.name)
+end
 
+function entitypanel:paint()
+	local ent = self.ent
 	if ent.bodies then
 		local x1, y1, x2, y2 = ent.bodies[1]:getAABB()
 		x1, y1 = world:worldToScreen(x1, y1)
@@ -485,6 +493,7 @@ function entitypanel:setEntity(ent)
 		local x2, y2 = world:worldToScreen(ent.x+0.5, ent.y+0.5)
 		self.x, self.y, self.w, self.h = x1, y1, x2 - x1, y2 - y1
 	end
+	panel.paint(self)
 end
 
 function entitypanel:mousepressed(x, y, button)
