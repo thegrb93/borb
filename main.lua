@@ -1,4 +1,5 @@
 scrw, scrh, winmode = love.window.getMode()
+dt = 1/winmode.refreshrate
 love.physics.setMeter(1)
 love.keyboard.setTextInput(false)
 

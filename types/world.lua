@@ -46,7 +46,6 @@ local world = types.world
 
 function world:initialize()
 	self.think = self.thinkGame
-	self.dt = 1/winmode.refreshrate
 	self.debug = false
 	self.allEntities = {}
 	self.addents = {}
@@ -132,9 +131,9 @@ end
 
 function world:thinkGame()
 	-- Update game logic
-	self.t = self.t + self.dt
-	self.physworld:update(self.dt)
-	flux.update(self.dt)
+	self.t = self.t + dt
+	self.physworld:update(dt)
+	flux.update(dt)
 	scheduler:tick(self.t)
 	for _, ent in ipairs(self.thinkents) do
 		ent:think()
@@ -151,7 +150,7 @@ function world:render()
 	-- Draw background entities
 	self.backcamera.zoom = self.camera.zoom*0.1
 	self.backcamera:setPos(self.camera.x, self.camera.y)
-	self.backcamera:update()
+	self.backcamera:think()
 	self.backcamera:push()
 	for _, ent in ipairs(self.drawents[1]) do
 		ent:draw()
@@ -159,7 +158,7 @@ function world:render()
 	self.backcamera:pop()
 
 	-- Draw foreground entities
-	self.camera:update()
+	self.camera:think()
 	self.camera:push()
 	for _, ent in ipairs(self.drawents[2]) do
 		ent:draw()

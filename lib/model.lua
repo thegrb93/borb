@@ -44,10 +44,10 @@ function model:initialize(name)
 	end
 end
 
-function model:createBodies(ent)
+function model:createBodies(ent, x, y, a)
 	local bodies = {}
 	for k, v in ipairs(self.bodies) do
-		local body = world.physworld:newCollider(ent.x, ent.y, ent.a)
+		local body = world.physworld:newCollider(x, y, a)
 		body:setObject(ent)
 		body:setType(v.type)
 		body.meshgroup = self.meshgroups[v.meshgroup]

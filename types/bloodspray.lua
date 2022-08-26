@@ -15,23 +15,18 @@ function bloodspray:initialize(x, y, dx, dy)
 	baseentity.initialize(self)
 	self.drawCategory = world.drawCategories.worldforeground
 	self.maxblood = 30
-	self.dt = world.dt
+	self.dt = dt
 	self.gx, self.gy = world.physworld:getGravity()
 
 	self.spray = {}
 	for i=1, self.maxblood do
 		local rx, ry = math.randVecSquare()
-		local setKutta, getKutta, updateKutta = util.rungeKutta()
-		setKutta(x+rx*0.2, y+ry*0.2, math.random()*2*math.pi, dx+rx*10, dy+ry*10, math.random()*4-2)
 		local blood = {
-			setKutta = setKutta,
-			getKutta = getKutta,
-			updateKutta = updateKutta,
+			kutta = util.rungeKutta(x+rx*0.2, y+ry*0.2, math.random()*2*math.pi, dx+rx*10, dy+ry*10, math.random()*4-2),
 			think = bloodspray.thinkDrip,
 			mesh = bloodspray.drip,
 			draw = bloodspray.drawBlood,
 		}
-		blood.x, blood.y, blood.a = getKutta()
 		self.spray[i] = blood
 	end
 	
@@ -46,13 +41,14 @@ function bloodspray:think()
 end
 
 function bloodspray:thinkDrip(blood)
-	local x, y, a, dx, dy, da = blood.getKutta()
+	local x, y, dx, dy = blood.kutta.x, blood.kutta.y, blood.kutta.dx, blood.kutta.dy
 
 	local fixture, x, y, xn, yn, fraction = util.traceLine(x, y, x+dx*self.dt*2, y+dy*self.dt*2, bloodspray.collideFilter)
 	if fixture then
 		self:buildBlood(blood, x, y, xn, yn)
 	else
-		blood.x, blood.y, blood.a = blood.updateKutta(dx*-0.05 + self.gx, dy*-0.05 + self.gy, 0)
+		blood.kutta(dx*-0.05 + self.gx, dy*-0.05 + self.gy, 0)
+		blood.x, blood.y, blood.a = blood.kutta.x, blood.kutta.y, blood.kutta.a
 	end
 end
 
@@ -61,14 +57,14 @@ end
 
 function bloodspray:thinkCeilingDrip(blood)
 	if blood.dripped then
-		local x, y, a, dx, dy, da = blood.getKutta()
+		local x, y, dx, dy = blood.kutta.x, blood.kutta.y, blood.kutta.dx, blood.kutta.dy
 		local fixture = util.traceLine(x, y, x+dx*self.dt*2, y+dy*self.dt*2, bloodspray.collideFilter)
 		if fixture then
 			blood.think = bloodspray.thinkPuddle
 			blood.draw = bloodspray.drawBlood
 		else
-			local _1, _2
-			_1, blood.oy, _2 = blood.updateKutta(0, dy*-0.05 + self.gy, 0)
+			blood.kutta(0, dy*-0.05 + self.gy, 0)
+			blood.oy = blood.kutta.y
 		end
 	end
 end
@@ -118,7 +114,7 @@ function bloodspray:buildBlood(blood, x, y, xn, yn)
 			flux.to(blood, 1, { oy = y + 0.1 }):ease("linear"):delay(math.random()*2):oncomplete(function() blood.dripped = true end)
 			blood.think = bloodspray.thinkCeilingDrip
 			blood.draw = bloodspray.drawCeilingDrip
-			blood.setKutta(blood.ox, y + 0.1, 0, 0, 0.05, 0)
+			blood.kutta.x, blood.kutta.y, blood.kutta.dx, blood.kutta.dy = blood.ox, y + 0.1, 0, 0.05
 		end
 	end
 end

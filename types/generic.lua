@@ -69,11 +69,11 @@ prop.properties = {
 }
 
 function prop:initialize(x, y, a, modelName)
-	baseentity.initialize(self, x, y, a)
+	baseentity.initialize(self)
 	self.drawCategory = world.drawCategories.foreground
 	self.modelName = modelName
 	self.model = models[modelName]
-	self.model:createBodies(self)
+	self.model:createBodies(self, x, y, a)
 end
 
 function prop:draw()

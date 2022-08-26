@@ -93,8 +93,12 @@ end
 function borb:postSolve(other,contact,impulse)
 	if impulse>50 then
 		local x, y = contact:getPositions()
+		local xn, yn = util.contactNormal(self, contact)
 		self.particles:setPosition(x, y)
 		self.particles:emit(math.floor((impulse-50)*50))
+
+		local shake = impulse*-0.3
+		world.camera:shake(xn*shake, yn*shake, 40)
 	end
 	if other and other:isInstanceOf(types.spike) then
 		local x, y = contact:getPositions()
@@ -141,7 +145,6 @@ function borb:thinkAlive()
 	self.particles:setDirection(math.atan2(self.dy, self.dx))
 
 	world.camera:setPos(self.x, self.y)
-	world.camera:update()
 end
 
 function borb:thinkDead()
@@ -156,7 +159,7 @@ function borb:drawAlive()
 	end
 	love.graphics.pop()
 
-	self.particles:update(world.dt)
+	self.particles:update(dt)
 	love.graphics.draw(self.particles)
 end
 
@@ -188,6 +191,7 @@ function borb:jump()
 		body:setLinearDamping(0)
 		body:setAngularDamping(0)
 		body:setLinearVelocity(self.dx, self.dy)
+		body:setAngularVelocity(self.da)
 		body:setCollisionClass("Player")
 		body:setObject(self)
 
@@ -386,12 +390,9 @@ function crumbs:initialize(target)
 
 	self.crumbs = {}
 	for i=1, self.maxcrumbs do
-		local setKutta, getKutta, updateKutta = util.rungeKutta()
 		local crumb = {
 			active = false,
-			setKutta = setKutta,
-			getKutta = getKutta,
-			updateKutta = updateKutta,
+			kutta = util.rungeKutta(0,0,0,0,0,0)
 		}
 		self.crumbs[i] = crumb
 	end
@@ -401,14 +402,14 @@ function crumbs:addCrumb(x, y, a, dx, dy, da)
 	for k, v in ipairs(self.crumbs) do
 		if not v.active then
 			v.active = true
-			v.setKutta(x, y, a, dx, dy, da)
+			v.kutta.x, v.kutta.y, v.kutta.a, v.kutta.dx, v.kutta.dy, v.kutta.da = x, y, a, dx, dy, da
 			break
 		end
 	end
 end
 
 function crumbs.crumbThink(crumb, tx, ty, tdx, tdy)
-	local x, y, a, dx, dy, da = crumb.getKutta()
+	local x, y, a, dx, dy, da = crumb.kutta.x, crumb.kutta.y, crumb.kutta.a, crumb.kutta.dx, crumb.kutta.dy, crumb.kutta.da
 	local dirx, diry = tx - x, ty - y
 	local dirlenSqr = math.lengthSqr(dirx, diry)
 	if dirlenSqr < 1 then crumb.active = false return end
@@ -416,7 +417,7 @@ function crumbs.crumbThink(crumb, tx, ty, tdx, tdy)
 	local dirlen = math.sqrt(dirlenSqr)
 	local veldot = math.max(math.dot(dirx, diry, dx, dy) / dirlen, 0)
 	local tanvelx, tanvely = dx - dirx/dirlen*veldot, dy - diry/dirlen*veldot
-	crumb.x, crumb.y, crumb.a = crumb.updateKutta(dirx*10 - tanvelx*5 + (tdx - dx)*0, diry*10 - tanvely*5 + (tdy - dy)*0, 0)
+	crumb.kutta(dirx*10 - tanvelx*5 + (tdx - dx)*0, diry*10 - tanvely*5 + (tdy - dy)*0, 0)
 end
 
 function crumbs:think()
@@ -433,7 +434,7 @@ end
 function crumbs:draw()
 	for k, crumb in ipairs(self.crumbs) do
 		if crumb.active then
-			love.graphics.draw(self.graphic, crumb.x, crumb.y, crumb.a, 0.005, 0.005, self.originx, self.originy)
+			love.graphics.draw(self.graphic, crumb.kutta.x, crumb.kutta.y, crumb.kutta.a, 0.005, 0.005, self.originx, self.originy)
 		end
 	end
 end

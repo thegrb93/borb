@@ -13,24 +13,19 @@ function util.newPDController(body, pgain, dgain)
 	end
 end
 
+local dt = dt
+local rkmeta = {__call = function(self, fx, fy, fa)
+	self.dx = self.dx + fx*dt
+	self.dy = self.dy + fy*dt
+	self.da = self.da + fa*dt
+	self.x = self.x + self.dx*dt
+	self.y = self.y + self.dy*dt
+	self.a = self.a + self.da*dt
+end}
 function util.rungeKutta(x, y, a, dx, dy, da)
-	local dt = world.dt
-	return
-		function(x_, y_, a_, dx_, dy_, da_)
-			x, y, a, dx, dy, da = x_, y_, a_, dx_, dy_, da_
-		end,
-		function()
-			return x, y, a, dx, dy, da
-		end,
-		function(fx, fy, fa)
-			dx = dx + fx*dt
-			dy = dy + fy*dt
-			da = da + fa*dt
-			x = x + dx*dt
-			y = y + dy*dt
-			a = a + da*dt
-			return x, y, a, dx, dy, da
-		end
+	return setmetatable({
+		x = x, y = y, a = a, dx = dx, dy = dy, da = da
+	}, rkmeta)
 end
 
 function util.binarySearch(xmin, xmax, iter, func)
