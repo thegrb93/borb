@@ -1,7 +1,5 @@
 addType("borb", "baseentity", function(baseentity)
 local borb = types.borb
-local bread = types.bread
-local crumbs = types.crumbs
 local featherProjectile = types.featherProjectile
 
 borb.radius = 1.5
@@ -55,13 +53,11 @@ function borb:initialize(x, y, a)
 	self.mass = self.body:getMass()
 	self.inertia = self.body:getInertia()
 
-	self.bread = bread:new(self, x, y-1)
-	self.bread:spawn()
-	self.crumbs = crumbs:new(self.body)
-	self.crumbs:spawn()
-
 	self.think = self.thinkAlive
 	self.draw = self.drawAlive
+
+	self.crumbs = types.crumbs:new(self.body)
+	self.crumbs:spawn()
 
 	hook.add("keypressed", self)
 	hook.add("mousepressed", self)
@@ -97,7 +93,7 @@ function borb:postSolve(other,contact,impulse)
 		self.particles:setPosition(x, y)
 		self.particles:emit(math.floor((impulse-50)*50))
 
-		local shake = impulse*-0.3
+		local shake = impulse*-0.2
 		world.camera:shake(xn*shake, yn*shake, 40)
 	end
 	if other and other:isInstanceOf(types.spike) then
@@ -126,20 +122,6 @@ function borb:thinkAlive()
 	elseif love.keyboard.isDown("d") then
 		self.body:applyForce(math.max(500 - self.dx*40, 50), 0)
 	end
-
-	-- local mx, my = self.bread:getPos()
-	-- local rx, ry = mx - self.x, my - self.y
-	-- local mag = math.max(math.lengthSqr(rx, ry), 4)
-	-- if mag<64 then
-		-- self.body:applyForce(rx/mag*500, ry/mag*500)
-		-- local mdx, mdy = self.bread.body:getLinearVelocity()
-		-- local trx, try = ry, -rx
-		-- for i=1, 10 do
-			-- if math.random() > 1-(1-math.sqrt(mag)/8)*0.25 then
-				-- self.crumbs:addCrumb(mx, my, math.random()*math.pi*2, mdx+(math.random()-0.5)*trx*10, mdy+(math.random()-0.5)*try*10, self.bread.body:getAngularVelocity())
-			-- end
-		-- end
-	-- end
 
 	self.particles:setSpeed(math.length(self.dx, self.dy)*0.5)
 	self.particles:setDirection(math.atan2(self.dy, self.dx))
@@ -332,48 +314,60 @@ addType("bread", "baseentity", function(baseentity)
 local bread = types.bread
 
 bread.graphic = images["bread.png"]
-bread.shape = love.physics.newCircleShape(0.5)
+bread.shape = love.physics.newRectangleShape(1.7, 1.7)
 bread.originx = bread.graphic:getWidth()*0.5
 bread.originy = bread.graphic:getHeight()*0.5
-function bread:initialize(borb, x, y)
-	baseentity.initialize(self)
-	self.borb = borb
+function bread:initialize(x, y, a)
+	baseentity.initialize(self, x, y, a)
 	self.drawCategory = world.drawCategories.foreground
 	self.body = world.physworld:newCollider(x, y, 0)
 	self.body:setType("dynamic")
-	self.body:setLinearDamping(0)
-	self.body:setAngularDamping(1)
 	self.body:setBullet(true)
 	self.body:setObject(self)
 	self.body:setCollisionClass("Player")
-	self.body:setGravityScale(0)
 	self.bodies = {self.body}
 
 	local fixture = self.body:addFixture("Main", bread.shape)
 	fixture:setFriction(10)
-	fixture:setRestitution(1)
-
-	self.pd = util.newPDController(self.body, 300)
 end
 
 function bread:getPos()
-	return self.body:getPosition()
+	return self.body:getState()
 end
 
 function bread:think()
-	local mx, my = world:screenToWorld(love.mouse.getPosition())
-	local x, y = self.body:getPosition()
-	local dx, dy = self.body:getLinearVelocity()
-	local bdx, bdy = self.borb.body:getLinearVelocity()
-	local diffx, diffy = mx - x, my - y
-	self.pd(diffx, diffy, 0, bdx-dx, bdy-dy, 0)
+	local x, y = self:getPos()
+
+	-- local mx, my = self.bread:getPos()
+	-- local rx, ry = mx - self.x, my - self.y
+	-- local mag = math.max(math.lengthSqr(rx, ry), 4)
+	-- if mag<64 then
+		-- self.body:applyForce(rx/mag*500, ry/mag*500)
+		-- local mdx, mdy = self.bread.body:getLinearVelocity()
+		-- local trx, try = ry, -rx
+		-- for i=1, 10 do
+			-- if math.random() > 1-(1-math.sqrt(mag)/8)*0.25 then
+				-- self.crumbs:addCrumb(mx, my, math.random()*math.pi*2, mdx+(math.random()-0.5)*trx*10, mdy+(math.random()-0.5)*try*10, self.bread.body:getAngularVelocity())
+			-- end
+		-- end
+	-- end
 end
 
 function bread:draw()
-	local x, y = self.body:getPosition()
-	love.graphics.draw(self.graphic, x, y, self.body:getAngle(), 0.002, 0.002, self.originx, self.originy)
+	local x, y, a = self:getPos()
+	love.graphics.draw(self.graphic, x, y, a, 0.002, 0.002, self.originx, self.originy)
 end
 
+function bread:serialize(buffer)
+	local x, y, a = self:getPos()
+	buffer[#buffer+1] = love.data.pack("string", "<ddd", x, y, a)
+end
+
+function bread.deserialize(buffer, pos)
+	local x, y, a
+	x, y, a, pos = love.data.unpack("<ddd", buffer, pos)
+	return bread:new(x, y, a), pos
+end
 end)
 
 addType("crumbs", "baseentity", function(baseentity)

@@ -23,7 +23,7 @@ end
 
 function camera:think()
 	if self.shaking then
-		self.shakeRk(-self.shakeRk.x*3000 - self.shakeRk.dx*20,-self.shakeRk.y*3000 - self.shakeRk.dy*20,0)
+		self.shakeRk(-self.shakeRk.x*3000 - self.shakeRk.dx*25,-self.shakeRk.y*3000 - self.shakeRk.dy*25,0)
 		if math.abs(self.shakeRk.x)<1e-7 and math.abs(self.shakeRk.y)<1e-7 and math.abs(self.shakeRk.dx)<1e-7 and math.abs(self.shakeRk.dy)<1e-7 then
 			self.shaking = false
 		end
