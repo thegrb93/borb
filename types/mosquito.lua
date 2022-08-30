@@ -96,7 +96,7 @@ function mosquito:chaseThink()
 	local tx, ty = math.rotVecCW(dx, dy)
 	local wave = math.sin(world.t*5)*5
 
-	self.pd(self.targetx - self.x, self.targety - self.y, math.angnorm(math.vecToAng(dx, dy)) - self.a, tx*wave-self.dx, ty*wave-self.dy, -self.da)
+	self.pd(self.targetx - self.x, self.targety - self.y, math.angnorm(math.vecToAng(dx, dy) - self.a), tx*wave-self.dx, ty*wave-self.dy, -self.da)
 end
 
 function mosquito:deadThink()
@@ -112,5 +112,4 @@ function mosquito:deadDraw()
 	-- love.graphics.circle("fill", self.x, self.y, 1)
 	mosquito.sprite:draw(world.t, 0.2, self.x, self.y, self.a, 2, 2)
 end
-
 end)

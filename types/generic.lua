@@ -41,7 +41,6 @@ end
 function spike:draw()
 	
 end
-
 end)
 
 addType("background", "baseentity", function(baseentity)
@@ -119,7 +118,18 @@ function worldprop.deserialize(buffer, pos)
 	x, y, a, modelName, pos = love.data.unpack("<ddds", buffer, pos)
 	return worldprop:new(x, y, a, modelName), pos
 end
+end)
 
+addType("item", "baseentity", function(baseentity)
+local item = types.item
+
+function item:initialize(x, y, a)
+	baseentity.initialize(self, x, y, a)
+	self.drawCategory = world.drawCategories.foreground
+end
+
+function item:use()
+end
 end)
 
 addType("animatedSprite", nil, function()

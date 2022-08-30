@@ -8,7 +8,7 @@ function camera:initialize()
 	self.y = 0
 	self.zoom = 25
 	self.transform = love.math.newTransform()
-	self.shakeRk = util.rungeKutta(0, 0, 0, 0, 0, 0)
+	self.shakeEul = util.eulerInt3D(0, 0, 0, 0, 0, 0)
 	self.shaking = false
 end
 
@@ -23,8 +23,8 @@ end
 
 function camera:think()
 	if self.shaking then
-		self.shakeRk(-self.shakeRk.x*3000 - self.shakeRk.dx*25,-self.shakeRk.y*3000 - self.shakeRk.dy*25,0)
-		if math.abs(self.shakeRk.x)<1e-7 and math.abs(self.shakeRk.y)<1e-7 and math.abs(self.shakeRk.dx)<1e-7 and math.abs(self.shakeRk.dy)<1e-7 then
+		self.shakeEul(-self.shakeEul.x*3000 - self.shakeEul.dx*25,-self.shakeEul.y*3000 - self.shakeEul.dy*25,0)
+		if self.shakeEul:isZero() then
 			self.shaking = false
 		end
 	end
@@ -32,7 +32,7 @@ function camera:think()
 	self.transform:reset()
 	self.transform:translate(winW/2, winH/2)
 	self.transform:scale(self.zoom, self.zoom)
-	self.transform:translate(self.shakeRk.x-self.x, self.shakeRk.y-self.y)
+	self.transform:translate(self.shakeEul.x-self.x, self.shakeEul.y-self.y)
 end
 
 function camera:setPos(x, y)
@@ -46,8 +46,8 @@ end
 
 function camera:shake(shakex, shakey)
 	self.shaking = true
-	self.shakeRk.dx = self.shakeRk.dx + shakex
-	self.shakeRk.dy = self.shakeRk.dy + shakey
+	self.shakeEul.dx = self.shakeEul.dx + shakex
+	self.shakeEul.dy = self.shakeEul.dy + shakey
 end
 
 end)

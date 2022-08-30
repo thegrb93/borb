@@ -14,18 +14,53 @@ function util.newPDController(body, pgain, dgain)
 end
 
 local dt = dt
-local rkmeta = {__call = function(self, fx, fy, fa)
+local eulmeta3 = {__call = function(self, fx, fy, fa)
 	self.dx = self.dx + fx*dt
 	self.dy = self.dy + fy*dt
 	self.da = self.da + fa*dt
 	self.x = self.x + self.dx*dt
 	self.y = self.y + self.dy*dt
 	self.a = self.a + self.da*dt
-end}
-function util.rungeKutta(x, y, a, dx, dy, da)
+end,
+__index = {
+	isZero = function(self)
+		return math.abs(self.x)<1e-7 and math.abs(self.y)<1e-7 and math.abs(self.a)<1e-7 and math.abs(self.dx)<1e-7 and math.abs(self.dy)<1e-7 and math.abs(self.da)<1e-7
+	end
+}}
+function util.eulerInt3D(x, y, a, dx, dy, da)
 	return setmetatable({
-		x = x, y = y, a = a, dx = dx, dy = dy, da = da
-	}, rkmeta)
+		x = x, y = y, a = a, dx = dx, dy = dy, da = da,
+	}, eulmeta3)
+end
+local eulmeta2 = {__call = function(self, fx, fy)
+	self.dx = self.dx + fx*dt
+	self.dy = self.dy + fy*dt
+	self.x = self.x + self.dx*dt
+	self.y = self.y + self.dy*dt
+end,
+__index = {
+	isZero = function(self)
+		return math.abs(self.x)<1e-7 and math.abs(self.y)<1e-7 and math.abs(self.dx)<1e-7 and math.abs(self.dy)<1e-7
+	end
+}}
+function util.eulerInt2D(x, y, dx, dy)
+	return setmetatable({
+		x = x, y = y, dx = dx, dy = dy
+	}, eulmeta2)
+end
+local eulmeta1 = {__call = function(self, fx)
+	self.dx = self.dx + fx*dt
+	self.x = self.x + self.dx*dt
+end,
+__index = {
+	isZero = function(self)
+		return math.abs(self.x)<1e-7 and math.abs(self.dx)<1e-7
+	end
+}}
+function util.eulerInt1D(x, dx)
+	return setmetatable({
+		x = x, dx = dx
+	}, eulmeta1)
 end
 
 function util.binarySearch(xmin, xmax, iter, func)
@@ -160,6 +195,7 @@ end
 
 function math.normalizeVec(x, y)
 	local l = math.sqrt(x^2+y^2)
+	if l == 0 then return 0, 1 end
 	return x/l, y/l
 end
 
@@ -196,7 +232,7 @@ function math.angnorm(x)
 end
 
 function math.vecToAng(x, y)
-	return math.atan2(x, -y)
+	return math.atan2(y, x)
 end
 
 function math.randVecNorm()

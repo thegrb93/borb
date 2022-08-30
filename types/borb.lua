@@ -33,6 +33,7 @@ function borb:initialize(x, y, a)
 	self.jumpNum = 8
 	self.jumpSpeed = 100
 	self.floofNum = 20
+	self.bloopEul = util.eulerInt1D(0, 0)
 
 	self.body = world.physworld:newCollider(x, y, a)
 	local fixture = self.body:addFixture("Main", borb.shape)
@@ -56,9 +57,6 @@ function borb:initialize(x, y, a)
 	self.think = self.thinkAlive
 	self.draw = self.drawAlive
 
-	self.crumbs = types.crumbs:new(self.body)
-	self.crumbs:spawn()
-
 	hook.add("keypressed", self)
 	hook.add("mousepressed", self)
 end
@@ -74,11 +72,14 @@ function borb:keypressed()
 	-- self:explode(0,-40)
 end
 
+function borb:bloop(mag)
+	self.bloopEul.dx = self.bloopEul.dx + mag
+end
+
 function borb:mousepressed(x, y, button)
 	if button == 1 then
 		local mx, my = world.camera.transform:inverseTransformPoint(love.mouse.getPosition())
 		local diffx, diffy = math.normalizeVec(mx - self.x, my - self.y)
-		if diffx~=diffx then diffx, diffy = 0, 1 end
 		types.featherProjectile:new(self, self.x, self.y, diffx*50, diffy*50):spawn()
 	elseif button == 2 then
 		local mx, my = world:screenToWorld(love.mouse.getPosition())
@@ -123,8 +124,13 @@ function borb:thinkAlive()
 		self.body:applyForce(math.max(500 - self.dx*40, 50), 0)
 	end
 
+	for _, v in ipairs(world.physworld:queryRectangleArea(self.x - self.radius*1.2, self.y - self.radius*1.2, self.radius*2.4, self.radius*2.4, {"Item"})) do
+		v:getObject():use(self)
+	end
+	self.bloopEul(-self.bloopEul.x*3000 - self.bloopEul.dx*15)
+
 	self.particles:setSpeed(math.length(self.dx, self.dy)*0.5)
-	self.particles:setDirection(math.atan2(self.dy, self.dx))
+	self.particles:setDirection(math.vecToAng(self.dx, self.dy))
 
 	world.camera:setPos(self.x, self.y)
 end
@@ -133,13 +139,14 @@ function borb:thinkDead()
 end
 
 function borb:drawAlive()
-	love.graphics.push()
-	love.graphics.applyTransform(love.math.newTransform(self.x, self.y, self.a, self.drawRadius/borb.originx, self.drawRadius/borb.originy, borb.originx, borb.originy))
+	local radius = self.bloopEul.x + self.drawRadius
+	love.graphics.push("transform")
+	love.graphics.applyTransform(love.math.newTransform(self.x, self.y, self.a, radius/borb.originx, radius/borb.originy, borb.originx, borb.originy))
 	love.graphics.draw(borb.graphic)
 	if self.jumping then
 		love.graphics.draw(borb.angryeye, 241, 83)
 	end
-	love.graphics.pop()
+	love.graphics.pop("transform")
 
 	self.particles:update(dt)
 	love.graphics.draw(self.particles)
@@ -255,9 +262,9 @@ local borb = types.borb
 local featherProjectile = types.featherProjectile
 
 featherProjectile.feather = images["feather.png"]
-featherProjectile.shape = love.physics.newCircleShape(0.5)
-featherProjectile.featherOriginX = featherProjectile.feather:getWidth()*0.5
-featherProjectile.featherOriginY = featherProjectile.feather:getWidth()*0.5
+featherProjectile.shape = love.physics.newCircleShape(0.2)
+featherProjectile.featherOriginX = 12
+featherProjectile.featherOriginY = 170
 function featherProjectile:initialize(borb, x, y, dx, dy)
 	baseentity.initialize(self, x, y, math.vecToAng(dx, dy))
 	self.borb = borb
@@ -301,7 +308,7 @@ end
 
 function featherProjectile:draw()
 	local x, y = self.body:getPosition()
-	love.graphics.draw(self.feather, x, y, self.body:getAngle()+2.3, 0.01, 0.01, self.featherOriginX-50, self.featherOriginY+30)
+	love.graphics.draw(self.feather, x, y, self.body:getAngle()-2.5, 0.01, 0.01, self.featherOriginX, self.featherOriginY)
 end
 
 function featherProjectile:onRemove()
@@ -310,7 +317,7 @@ end
 
 end)
 
-addType("bread", "baseentity", function(baseentity)
+addType("bread", "item", function(item)
 local bread = types.bread
 
 bread.graphic = images["bread.png"]
@@ -318,39 +325,40 @@ bread.shape = love.physics.newRectangleShape(1.7, 1.7)
 bread.originx = bread.graphic:getWidth()*0.5
 bread.originy = bread.graphic:getHeight()*0.5
 function bread:initialize(x, y, a)
-	baseentity.initialize(self, x, y, a)
+	item.initialize(self, x, y, a)
 	self.drawCategory = world.drawCategories.foreground
 	self.body = world.physworld:newCollider(x, y, 0)
 	self.body:setType("dynamic")
 	self.body:setBullet(true)
 	self.body:setObject(self)
-	self.body:setCollisionClass("Player")
+	self.body:setCollisionClass("Item")
 	self.bodies = {self.body}
 
 	local fixture = self.body:addFixture("Main", bread.shape)
 	fixture:setFriction(10)
+
+	self.crumbs = types.crumbs:new()
+	self.crumbs:spawn()
 end
 
 function bread:getPos()
 	return self.body:getState()
 end
 
-function bread:think()
+function bread:use(user)
+	self.crumbs.targetent = user
+	self.crumbs.target = user.bodies[1]
+	local ux, uy = user:getPos()
 	local x, y = self:getPos()
-
-	-- local mx, my = self.bread:getPos()
-	-- local rx, ry = mx - self.x, my - self.y
-	-- local mag = math.max(math.lengthSqr(rx, ry), 4)
-	-- if mag<64 then
-		-- self.body:applyForce(rx/mag*500, ry/mag*500)
-		-- local mdx, mdy = self.bread.body:getLinearVelocity()
-		-- local trx, try = ry, -rx
-		-- for i=1, 10 do
-			-- if math.random() > 1-(1-math.sqrt(mag)/8)*0.25 then
-				-- self.crumbs:addCrumb(mx, my, math.random()*math.pi*2, mdx+(math.random()-0.5)*trx*10, mdy+(math.random()-0.5)*try*10, self.bread.body:getAngularVelocity())
-			-- end
-		-- end
-	-- end
+	local rx, ry = ux - x, uy - y
+	local len = math.clamp(math.length(rx, ry), 2, 8)
+	local mdx, mdy = self.body:getLinearVelocity()
+	local trx, try = math.rotVecCCW(rx, ry)
+	for i=1, 10 do
+		if math.random() > 1-(1-len/8)*0.1 then
+			self.crumbs:addCrumb(x, y, math.random()*math.pi*2, mdx+(math.random()-0.5)*trx*10, mdy+(math.random()-0.5)*try*10, self.body:getAngularVelocity())
+		end
+	end
 end
 
 function bread:draw()
@@ -376,9 +384,8 @@ local crumbs = types.crumbs
 crumbs.graphic = images["crumb.png"]
 crumbs.originx = crumbs.graphic:getWidth()*0.5
 crumbs.originy = crumbs.graphic:getHeight()*0.5
-function crumbs:initialize(target)
+function crumbs:initialize()
 	baseentity.initialize(self)
-	self.target = target
 	self.drawCategory = world.drawCategories.foreground
 	self.maxcrumbs = 100
 
@@ -386,7 +393,7 @@ function crumbs:initialize(target)
 	for i=1, self.maxcrumbs do
 		local crumb = {
 			active = false,
-			kutta = util.rungeKutta(0,0,0,0,0,0)
+			eul = util.eulerInt3D(0,0,0,0,0,0)
 		}
 		self.crumbs[i] = crumb
 	end
@@ -396,31 +403,31 @@ function crumbs:addCrumb(x, y, a, dx, dy, da)
 	for k, v in ipairs(self.crumbs) do
 		if not v.active then
 			v.active = true
-			v.kutta.x, v.kutta.y, v.kutta.a, v.kutta.dx, v.kutta.dy, v.kutta.da = x, y, a, dx, dy, da
+			v.eul.x, v.eul.y, v.eul.a, v.eul.dx, v.eul.dy, v.eul.da = x, y, a, dx, dy, da
 			break
 		end
 	end
 end
 
-function crumbs.crumbThink(crumb, tx, ty, tdx, tdy)
-	local x, y, a, dx, dy, da = crumb.kutta.x, crumb.kutta.y, crumb.kutta.a, crumb.kutta.dx, crumb.kutta.dy, crumb.kutta.da
+function crumbs:crumbThink(crumb, tx, ty, tdx, tdy)
+	local x, y, a, dx, dy, da = crumb.eul.x, crumb.eul.y, crumb.eul.a, crumb.eul.dx, crumb.eul.dy, crumb.eul.da
 	local dirx, diry = tx - x, ty - y
 	local dirlenSqr = math.lengthSqr(dirx, diry)
-	if dirlenSqr < 1 then crumb.active = false return end
+	if dirlenSqr < 1 then crumb.active = false self.targetent:bloop(3+math.random()*2) return end
 
 	local dirlen = math.sqrt(dirlenSqr)
 	local veldot = math.max(math.dot(dirx, diry, dx, dy) / dirlen, 0)
 	local tanvelx, tanvely = dx - dirx/dirlen*veldot, dy - diry/dirlen*veldot
-	crumb.kutta(dirx*10 - tanvelx*5 + (tdx - dx)*0, diry*10 - tanvely*5 + (tdy - dy)*0, 0)
+	crumb.eul(dirx*10 - tanvelx*5 + (tdx - dx)*0, diry*10 - tanvely*5 + (tdy - dy)*0, 0)
 end
 
 function crumbs:think()
-	if self.target:isDestroyed() then self:remove() return end
+	if not self.target or self.target:isDestroyed() then return end
 	local tx, ty = self.target:getPosition()
 	local tdx, tdy = self.target:getLinearVelocity()
 	for k, crumb in ipairs(self.crumbs) do
 		if crumb.active then
-			self.crumbThink(crumb, tx, ty, tdx, tdy)
+			self:crumbThink(crumb, tx, ty, tdx, tdy)
 		end
 	end
 end
@@ -428,7 +435,7 @@ end
 function crumbs:draw()
 	for k, crumb in ipairs(self.crumbs) do
 		if crumb.active then
-			love.graphics.draw(self.graphic, crumb.kutta.x, crumb.kutta.y, crumb.kutta.a, 0.005, 0.005, self.originx, self.originy)
+			love.graphics.draw(self.graphic, crumb.eul.x, crumb.eul.y, crumb.eul.a, 0.005, 0.005, self.originx, self.originy)
 		end
 	end
 end

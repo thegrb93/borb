@@ -75,6 +75,7 @@ function world:setupWorld()
 	self.physworld:addCollisionClass("World", {ignores = {}})
 	self.physworld:addCollisionClass("Player", {ignores = {"Player"}})
 	self.physworld:addCollisionClass("Enemy", {ignores = {}})
+	self.physworld:addCollisionClass("Item", {ignores = {}})
 
 	self.camera = types.camera:new()
 	self.backcamera = types.camera:new()

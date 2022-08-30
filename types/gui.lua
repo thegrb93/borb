@@ -551,6 +551,7 @@ function console:initialize(parent)
 	self.hidden = true
 	self.open = false
 	self.reclose = 0
+	self.last_command = ""
 	print = function(...)
 		if not self.open then
 			self.hidden = false
@@ -558,9 +559,17 @@ function console:initialize(parent)
 		end
 		self:print(...)
 	end
-	function self.entry.onEnter(_, txt)
-		self.entry:setText("")
+	function self.entry.onEnter(entry, txt)
+		entry:setText("")
 		self:command(txt)
+	end
+	local keypressed = self.entry.keypressed
+	function self.entry.keypressed(entry, key)
+		if key == "up" then
+			entry:setText(self.last_command)
+		else
+			keypressed(entry, key)
+		end
 	end
 end
 
@@ -618,6 +627,7 @@ function console:command(txt)
 		end
 	end
 	if #args>0 and #(args[1])>0 then
+		self.last_command = txt
 		local command = commands[args[1]]
 		if command then
 			util.pcall(command, unpack(args, 2))
