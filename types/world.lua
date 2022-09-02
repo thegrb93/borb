@@ -9,7 +9,7 @@ addType("baseentity", nil, function()
 		self.removing = false
 	end
 
-	function baseentity:getPos()
+	function baseentity:getState()
 		return self.x, self.y
 	end
 

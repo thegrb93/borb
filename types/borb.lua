@@ -68,6 +68,10 @@ function borb:onRemove()
 	hook.remove("mousepressed", self)
 end
 
+function borb:getState()
+	return self.body:getState()
+end
+
 function borb:keypressed()
 	-- self:explode(0,-40)
 end
@@ -80,7 +84,7 @@ function borb:mousepressed(x, y, button)
 	if button == 1 then
 		local mx, my = world.camera.transform:inverseTransformPoint(love.mouse.getPosition())
 		local diffx, diffy = math.normalizeVec(mx - self.x, my - self.y)
-		types.featherProjectile:new(self, self.x, self.y, diffx*50, diffy*50):spawn()
+		types.featherProjectile:new(self, self.x, self.y, self.dx+diffx*50, self.dy+diffy*50):spawn()
 	elseif button == 2 then
 		local mx, my = world:screenToWorld(love.mouse.getPosition())
 		types.mosquito:new(mx, my):spawn()
@@ -94,7 +98,7 @@ function borb:postSolve(other,contact,impulse)
 		self.particles:setPosition(x, y)
 		self.particles:emit(math.floor((impulse-50)*50))
 
-		local shake = impulse*-0.2
+		local shake = impulse*-0.3
 		world.camera:shake(xn*shake, yn*shake, 40)
 	end
 	if other and other:isInstanceOf(types.spike) then
@@ -124,7 +128,7 @@ function borb:thinkAlive()
 		self.body:applyForce(math.max(500 - self.dx*40, 50), 0)
 	end
 
-	for _, v in ipairs(world.physworld:queryRectangleArea(self.x - self.radius*1.2, self.y - self.radius*1.2, self.radius*2.4, self.radius*2.4, {"Item"})) do
+	for _, v in ipairs(world.physworld:queryRectangleArea(self.x - self.radius*1.4, self.y - self.radius*1.4, self.radius*2.8, self.radius*2.8, {"Item"})) do
 		v:getObject():use(self)
 	end
 	self.bloopEul(-self.bloopEul.x*3000 - self.bloopEul.dx*15)
@@ -339,35 +343,44 @@ function bread:initialize(x, y, a)
 
 	self.crumbs = types.crumbs:new()
 	self.crumbs:spawn()
+	self.ncrumbs = 50
 end
 
-function bread:getPos()
+function bread:getState()
 	return self.body:getState()
 end
 
 function bread:use(user)
 	self.crumbs.targetent = user
-	self.crumbs.target = user.bodies[1]
-	local ux, uy = user:getPos()
-	local x, y = self:getPos()
+	local ux, uy = user:getState()
+	local x, y, a, mdx, mdy, mda = self:getState()
 	local rx, ry = ux - x, uy - y
-	local len = math.clamp(math.length(rx, ry), 2, 8)
-	local mdx, mdy = self.body:getLinearVelocity()
+	local len = math.clamp(math.length(rx, ry), 0.2, 10)
 	local trx, try = math.rotVecCCW(rx, ry)
 	for i=1, 10 do
-		if math.random() > 1-(1-len/8)*0.1 then
-			self.crumbs:addCrumb(x, y, math.random()*math.pi*2, mdx+(math.random()-0.5)*trx*10, mdy+(math.random()-0.5)*try*10, self.body:getAngularVelocity())
+		if math.random() > 1-(1-len/10)*0.05 then
+			local tvel = (math.random()-0.5)*10
+			self.crumbs:addCrumb(x, y, math.random()*math.pi*2, mdx+tvel*trx, mdy+tvel*try, mda)
+			self.body:applyAngularImpulse((math.random()-0.5)*50)
+			self.ncrumbs = self.ncrumbs - 1
+			if self.ncrumbs == 0 then
+				self:remove()
+			end
 		end
 	end
 end
 
 function bread:draw()
-	local x, y, a = self:getPos()
+	local x, y, a = self:getState()
 	love.graphics.draw(self.graphic, x, y, a, 0.002, 0.002, self.originx, self.originy)
 end
 
+function bread:onRemove()
+	self.body:destroy()
+end
+
 function bread:serialize(buffer)
-	local x, y, a = self:getPos()
+	local x, y, a = self:getState()
 	buffer[#buffer+1] = love.data.pack("string", "<ddd", x, y, a)
 end
 
@@ -422,9 +435,8 @@ function crumbs:crumbThink(crumb, tx, ty, tdx, tdy)
 end
 
 function crumbs:think()
-	if not self.target or self.target:isDestroyed() then return end
-	local tx, ty = self.target:getPosition()
-	local tdx, tdy = self.target:getLinearVelocity()
+	if not self.targetent then return end
+	local tx, ty, ta, tdx, tdy = self.targetent:getState()
 	for k, crumb in ipairs(self.crumbs) do
 		if crumb.active then
 			self:crumbThink(crumb, tx, ty, tdx, tdy)
