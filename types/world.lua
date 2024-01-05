@@ -226,10 +226,10 @@ end
 
 end)
 
-hook.add("postload","world",function()
+hook.add("postload", { postload = function()
 	world = types.world:new()
 	types.mainmenu:new()
-end)
+end })
 
 function commands.debug()
 	world.debug = not world.debug
