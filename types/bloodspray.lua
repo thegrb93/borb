@@ -22,7 +22,12 @@ function bloodspray:initialize(x, y, dx, dy)
 	for i=1, self.maxblood do
 		local rx, ry = math.randVecSquare()
 		local blood = {
-			eul = util.eulerInt3D(x+rx*0.2, y+ry*0.2, math.random()*2*math.pi, dx+rx*10, dy+ry*10, math.random()*4-2),
+			x = x+rx*0.2,
+			y = y+ry*0.2,
+			a = math.random()*2*math.pi,
+			dx = dx+rx*10,
+			dy = dy+ry*10,
+			da = math.random()*4-2,
 			think = bloodspray.thinkDrip,
 			mesh = bloodspray.drip,
 			draw = bloodspray.drawBlood,
@@ -41,14 +46,11 @@ function bloodspray:think()
 end
 
 function bloodspray:thinkDrip(blood)
-	local x, y, dx, dy = blood.eul.x, blood.eul.y, blood.eul.dx, blood.eul.dy
-
-	local fixture, x, y, xn, yn, fraction = util.traceLine(x, y, x+dx*self.dt*2, y+dy*self.dt*2, bloodspray.collideFilter)
+	local fixture, x, y, xn, yn, fraction = util.traceLine(blood.x, blood.y, blood.x+blood.dx*self.dt*2, blood.y+blood.dy*self.dt*2, bloodspray.collideFilter)
 	if fixture then
 		self:buildBlood(blood, x, y, xn, yn)
 	else
-		blood.eul(dx*-0.05 + self.gx, dy*-0.05 + self.gy, 0)
-		blood.x, blood.y, blood.a = blood.eul.x, blood.eul.y, blood.eul.a
+		util.eulerIntegrate3D(blood, blood.dx*-0.05 + self.gx, blood.dy*-0.05 + self.gy, 0)
 	end
 end
 
@@ -56,16 +58,12 @@ function bloodspray:thinkPuddle()
 end
 
 function bloodspray:thinkCeilingDrip(blood)
-	if blood.dripped then
-		local x, y, dx, dy = blood.eul.x, blood.eul.y, blood.eul.dx, blood.eul.dy
-		local fixture = util.traceLine(x, y, x+dx*self.dt*2, y+dy*self.dt*2, bloodspray.collideFilter)
-		if fixture then
-			blood.think = bloodspray.thinkPuddle
-			blood.draw = bloodspray.drawBlood
-		else
-			blood.eul(0, dy*-0.05 + self.gy, 0)
-			blood.oy = blood.eul.y
-		end
+	local fixture = util.traceLine(blood.drip.x, blood.drip.y, blood.drip.x+blood.drip.dx*self.dt*2, blood.drip.y+blood.drip.dy*self.dt*2, bloodspray.collideFilter)
+	if fixture then
+		blood.think = bloodspray.thinkPuddle
+		blood.draw = bloodspray.drawBlood
+	else
+		util.eulerIntegrate2D(blood.drip, 0, blood.drip.dy*-0.05 + self.gy, 0)
 	end
 end
 
@@ -105,16 +103,17 @@ function bloodspray:buildBlood(blood, x, y, xn, yn)
 	if math.random()>0.5 then
 		local xn2, yn2 = math.rotVecCCW(xn, yn)
 		local offset = math.random()*(rightW+leftW)-rightW
-		blood.ox, blood.oy = x+xn2*offset, y+yn2*offset
+		blood.drip = {x = x+xn2*offset, y = y+yn2*offset, dx = 0, dy = 0}
 		if yn < -0.17364 then
 			blood.h = 0
 			flux.to(blood, 2, { h = math.random() + 0.1 }):ease("linear"):delay(math.random()*1)
 			blood.draw = bloodspray.drawFloorDrip
 		elseif yn > 0.17364 then
-			flux.to(blood, 1, { oy = y + 0.1 }):ease("linear"):delay(math.random()*2):oncomplete(function() blood.dripped = true end)
-			blood.think = bloodspray.thinkCeilingDrip
+			flux.to(blood.drip, 1, { y = blood.drip.y + 0.1 }):ease("linear"):delay(math.random()*2):oncomplete(function()
+				blood.think = bloodspray.thinkCeilingDrip
+				blood.drip.dy = 0.05
+			end)
 			blood.draw = bloodspray.drawCeilingDrip
-			blood.eul.x, blood.eul.y, blood.eul.dx, blood.eul.dy = blood.ox, y + 0.1, 0, 0.05
 		end
 	end
 end
@@ -154,12 +153,12 @@ end
 
 function bloodspray.drawFloorDrip(blood)
 	bloodspray.drawBlood(blood)
-	love.graphics.rectangle("fill", blood.ox-0.05, blood.oy, 0.1, blood.h)
+	love.graphics.rectangle("fill", blood.drip.x-0.05, blood.drip.y, 0.1, blood.h)
 end
 
 function bloodspray.drawCeilingDrip(blood)
 	bloodspray.drawBlood(blood)
-	love.graphics.rectangle("fill", blood.ox, blood.oy, 0.1, 0.1)
+	love.graphics.rectangle("fill", blood.drip.x-0.05, blood.drip.y-0.05, 0.1, 0.1)
 end
 
 function bloodspray:onRemove()

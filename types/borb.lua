@@ -33,7 +33,7 @@ function borb:initialize(x, y, a)
 	self.jumpNum = 8
 	self.jumpSpeed = 100
 	self.floofNum = 20
-	self.bloopEul = util.eulerInt1D(0, 0)
+	self.bloopState = {x = 0, dx = 0}
 
 	self.body = world.physworld:newCollider(x, y, a)
 	local fixture = self.body:addFixture("Main", borb.shape)
@@ -77,7 +77,7 @@ function borb:keypressed()
 end
 
 function borb:bloop(mag)
-	self.bloopEul.dx = self.bloopEul.dx + mag
+	self.bloopState.dx = self.bloopState.dx + mag
 end
 
 function borb:mousepressed(x, y, button)
@@ -99,7 +99,7 @@ function borb:postSolve(other,contact,impulse)
 		self.particles:emit(math.floor((impulse-50)*50))
 
 		local shake = impulse*-0.3
-		world.camera:shake(xn*shake, yn*shake, 40)
+		world.camera:addShake(xn*shake, yn*shake, 40)
 	end
 	if other and other:isInstanceOf(types.spike) then
 		local x, y = contact:getPositions()
@@ -131,7 +131,7 @@ function borb:thinkAlive()
 	for _, v in ipairs(world.physworld:queryRectangleArea(self.x - self.radius*1.4, self.y - self.radius*1.4, self.radius*2.8, self.radius*2.8, {"Item"})) do
 		v:getObject():use(self)
 	end
-	self.bloopEul(-self.bloopEul.x*3000 - self.bloopEul.dx*15)
+	util.eulerIntegrate1D(self.bloopState, -self.bloopState.x*3000 - self.bloopState.dx*15)
 
 	self.particles:setSpeed(math.length(self.dx, self.dy)*0.5)
 	self.particles:setDirection(math.vecToAng(self.dx, self.dy))
@@ -143,7 +143,7 @@ function borb:thinkDead()
 end
 
 function borb:drawAlive()
-	local radius = self.bloopEul.x + self.drawRadius
+	local radius = self.bloopState.x + self.drawRadius
 	love.graphics.push("transform")
 	love.graphics.applyTransform(love.math.newTransform(self.x, self.y, self.a, radius/borb.originx, radius/borb.originy, borb.originx, borb.originy))
 	love.graphics.draw(borb.graphic)
@@ -404,11 +404,7 @@ function crumbs:initialize()
 
 	self.crumbs = {}
 	for i=1, self.maxcrumbs do
-		local crumb = {
-			active = false,
-			eul = util.eulerInt3D(0,0,0,0,0,0)
-		}
-		self.crumbs[i] = crumb
+		self.crumbs[i] = {active = false}
 	end
 end
 
@@ -416,22 +412,21 @@ function crumbs:addCrumb(x, y, a, dx, dy, da)
 	for k, v in ipairs(self.crumbs) do
 		if not v.active then
 			v.active = true
-			v.eul.x, v.eul.y, v.eul.a, v.eul.dx, v.eul.dy, v.eul.da = x, y, a, dx, dy, da
+			v.x, v.y, v.a, v.dx, v.dy, v.da = x, y, a, dx, dy, da
 			break
 		end
 	end
 end
 
 function crumbs:crumbThink(crumb, tx, ty, tdx, tdy)
-	local x, y, a, dx, dy, da = crumb.eul.x, crumb.eul.y, crumb.eul.a, crumb.eul.dx, crumb.eul.dy, crumb.eul.da
-	local dirx, diry = tx - x, ty - y
+	local dirx, diry = tx - crumb.x, ty - crumb.y
 	local dirlenSqr = math.lengthSqr(dirx, diry)
 	if dirlenSqr < 1 then crumb.active = false self.targetent:bloop(3+math.random()*2) return end
 
 	local dirlen = math.sqrt(dirlenSqr)
-	local veldot = math.max(math.dot(dirx, diry, dx, dy) / dirlen, 0)
-	local tanvelx, tanvely = dx - dirx/dirlen*veldot, dy - diry/dirlen*veldot
-	crumb.eul(dirx*10 - tanvelx*5 + (tdx - dx)*0, diry*10 - tanvely*5 + (tdy - dy)*0, 0)
+	local veldot = math.max(math.dot(dirx, diry, crumb.dx, crumb.dy) / dirlen, 0)
+	local tanvelx, tanvely = crumb.dx - dirx/dirlen*veldot, crumb.dy - diry/dirlen*veldot
+	util.eulerIntegrate3D(crumb, dirx*10 - tanvelx*5 + (tdx - crumb.dx)*0, diry*10 - tanvely*5 + (tdy - crumb.dy)*0, 0)
 end
 
 function crumbs:think()
@@ -447,7 +442,7 @@ end
 function crumbs:draw()
 	for k, crumb in ipairs(self.crumbs) do
 		if crumb.active then
-			love.graphics.draw(self.graphic, crumb.eul.x, crumb.eul.y, crumb.eul.a, 0.005, 0.005, self.originx, self.originy)
+			love.graphics.draw(self.graphic, crumb.x, crumb.y, crumb.a, 0.005, 0.005, self.originx, self.originy)
 		end
 	end
 end

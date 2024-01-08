@@ -14,53 +14,34 @@ function util.newPDController(body, pgain, dgain)
 end
 
 local dt = dt
-local eulmeta3 = {__call = function(self, fx, fy, fa)
+function util.eulerIntegrate3D(self, fx, fy, fa)
 	self.dx = self.dx + fx*dt
 	self.dy = self.dy + fy*dt
 	self.da = self.da + fa*dt
 	self.x = self.x + self.dx*dt
 	self.y = self.y + self.dy*dt
 	self.a = self.a + self.da*dt
-end,
-__index = {
-	isZero = function(self)
-		return math.abs(self.x)<1e-7 and math.abs(self.y)<1e-7 and math.abs(self.a)<1e-7 and math.abs(self.dx)<1e-7 and math.abs(self.dy)<1e-7 and math.abs(self.da)<1e-7
-	end
-}}
-function util.eulerInt3D(x, y, a, dx, dy, da)
-	return setmetatable({
-		x = x, y = y, a = a, dx = dx, dy = dy, da = da,
-	}, eulmeta3)
 end
-local eulmeta2 = {__call = function(self, fx, fy)
+function util.isStateZero3D(self)
+	return math.abs(self.x)<1e-7 and math.abs(self.y)<1e-7 and math.abs(self.a)<1e-7 and math.abs(self.dx)<1e-7 and math.abs(self.dy)<1e-7 and math.abs(self.da)<1e-7
+end
+
+function util.eulerIntegrate2D(self, fx, fy)
 	self.dx = self.dx + fx*dt
 	self.dy = self.dy + fy*dt
 	self.x = self.x + self.dx*dt
 	self.y = self.y + self.dy*dt
-end,
-__index = {
-	isZero = function(self)
-		return math.abs(self.x)<1e-7 and math.abs(self.y)<1e-7 and math.abs(self.dx)<1e-7 and math.abs(self.dy)<1e-7
-	end
-}}
-function util.eulerInt2D(x, y, dx, dy)
-	return setmetatable({
-		x = x, y = y, dx = dx, dy = dy
-	}, eulmeta2)
 end
-local eulmeta1 = {__call = function(self, fx)
+function util.isStateZero2D(self)
+	return math.abs(self.x)<1e-7 and math.abs(self.y)<1e-7 and math.abs(self.dx)<1e-7 and math.abs(self.dy)<1e-7
+end
+
+function util.eulerIntegrate1D(self, fx)
 	self.dx = self.dx + fx*dt
 	self.x = self.x + self.dx*dt
-end,
-__index = {
-	isZero = function(self)
-		return math.abs(self.x)<1e-7 and math.abs(self.dx)<1e-7
-	end
-}}
-function util.eulerInt1D(x, dx)
-	return setmetatable({
-		x = x, dx = dx
-	}, eulmeta1)
+end
+function util.isStateZero1D(self)
+	return math.abs(self.x)<1e-7 and math.abs(self.dx)<1e-7
 end
 
 function util.binarySearch(xmin, xmax, iter, func)
