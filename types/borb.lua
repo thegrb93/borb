@@ -1,9 +1,11 @@
 addType("borb", "baseentity", function(baseentity)
 local borb = types.borb
-local bread = types.bread
-local crumbs = types.crumbs
 local featherProjectile = types.featherProjectile
 
+borb.radius = 1.5
+borb.shape = love.physics.newCircleShape(borb.radius*0.8)
+borb.jumpShape = love.physics.newCircleShape(borb.radius*0.79)
+borb.floofshape = love.physics.newRectangleShape(borb.radius*1.5, borb.radius*0.5)
 borb.graphic = images["borb.png"]
 borb.angryeye = images["borb_angryeye.png"]
 borb.feather = images["feather.png"]
@@ -22,39 +24,35 @@ borb.particles:setColors(1, 1, 1, 1, 1, 1, 1, 0)
 borb.particles:setLinearAcceleration(0, 0, 0, 10)
 borb.particles:setEmissionArea("ellipse", 1, 0.5, 0, false)
 borb.particles:setSpread(0.6)
-function borb:initialize(x, y, radius)
-	baseentity.initialize(self)
+function borb:initialize(x, y, a)
+	baseentity.initialize(self, x, y, a)
 	self.drawCategory = world.drawCategories.foreground
-	self.radius = radius
-	self.drawRadius = radius
-	self.jumpRadius = self.radius*0.79
+	self.radius = borb.radius
+	self.drawRadius = self.radius
 	self.jumpSize = self.radius*0.5
 	self.jumpNum = 8
 	self.jumpSpeed = 100
 	self.floofNum = 20
+	self.bloopEul = util.eulerInt1D(0, 0)
 
-	self.body = world.physworld:newCircleCollider(x, y, self.radius*0.8)
+	self.body = world.physworld:newCollider(x, y, a)
+	local fixture = self.body:addFixture("Main", borb.shape)
+	fixture:setFriction(10)
+	fixture:setRestitution(0.5)
 	self.body:setType("dynamic")
 	self.body:setLinearDamping(0)
 	self.body:setAngularDamping(0)
 	self.body:setBullet(true)
 	self.body:setObject(self)
 	self.body:setCollisionClass("Player")
+	self.bodies = {self.body}
 	self.x, self.y, self.a, self.dx, self.dy, self.da = self.body:getState()
 
-	local fixture = self.body.fixtures.Main
-	fixture:setFriction(10)
-	fixture:setRestitution(0.5)
 	self.body:setPostSolve(function(collider_1, collider_2, contact, normal_impulse1, tangent_impulse1, normal_impulse2, tangent_impulse2)
 		self:postSolve(collider_2:getObject(), contact, normal_impulse1)
 	end)
 	self.mass = self.body:getMass()
 	self.inertia = self.body:getInertia()
-
-	self.bread = bread:new(self, x, y-1)
-	self.bread:spawn()
-	self.crumbs = crumbs:new(self.body)
-	self.crumbs:spawn()
 
 	self.think = self.thinkAlive
 	self.draw = self.drawAlive
@@ -70,18 +68,25 @@ function borb:onRemove()
 	hook.remove("mousepressed", self)
 end
 
+function borb:getState()
+	return self.body:getState()
+end
+
 function borb:keypressed()
 	-- self:explode(0,-40)
+end
+
+function borb:bloop(mag)
+	self.bloopEul.dx = self.bloopEul.dx + mag
 end
 
 function borb:mousepressed(x, y, button)
 	if button == 1 then
 		local mx, my = world.camera.transform:inverseTransformPoint(love.mouse.getPosition())
 		local diffx, diffy = math.normalizeVec(mx - self.x, my - self.y)
-		if diffx~=diffx then diffx, diffy = 0, 1 end
-		types.featherProjectile:new(self, self.x, self.y, diffx*50, diffy*50):spawn()
+		types.featherProjectile:new(self, self.x, self.y, self.dx+diffx*50, self.dy+diffy*50):spawn()
 	elseif button == 2 then
-		local mx, my = world.camera.transform:inverseTransformPoint(love.mouse.getPosition())
+		local mx, my = world:screenToWorld(love.mouse.getPosition())
 		types.mosquito:new(mx, my):spawn()
 	end
 end
@@ -89,8 +94,12 @@ end
 function borb:postSolve(other,contact,impulse)
 	if impulse>50 then
 		local x, y = contact:getPositions()
+		local xn, yn = util.contactNormal(self, contact)
 		self.particles:setPosition(x, y)
 		self.particles:emit(math.floor((impulse-50)*50))
+
+		local shake = impulse*-0.3
+		world.camera:shake(xn*shake, yn*shake, 40)
 	end
 	if other and other:isInstanceOf(types.spike) then
 		local x, y = contact:getPositions()
@@ -119,40 +128,31 @@ function borb:thinkAlive()
 		self.body:applyForce(math.max(500 - self.dx*40, 50), 0)
 	end
 
-	-- local mx, my = self.bread:getPos()
-	-- local rx, ry = mx - self.x, my - self.y
-	-- local mag = math.max(math.lengthSqr(rx, ry), 4)
-	-- if mag<64 then
-		-- self.body:applyForce(rx/mag*500, ry/mag*500)
-		-- local mdx, mdy = self.bread.body:getLinearVelocity()
-		-- local trx, try = ry, -rx
-		-- for i=1, 10 do
-			-- if math.random() > 1-(1-math.sqrt(mag)/8)*0.25 then
-				-- self.crumbs:addCrumb(mx, my, math.random()*math.pi*2, mdx+(math.random()-0.5)*trx*10, mdy+(math.random()-0.5)*try*10, self.bread.body:getAngularVelocity())
-			-- end
-		-- end
-	-- end
+	for _, v in ipairs(world.physworld:queryRectangleArea(self.x - self.radius*1.4, self.y - self.radius*1.4, self.radius*2.8, self.radius*2.8, {"Item"})) do
+		v:getObject():use(self)
+	end
+	self.bloopEul(-self.bloopEul.x*3000 - self.bloopEul.dx*15)
 
 	self.particles:setSpeed(math.length(self.dx, self.dy)*0.5)
-	self.particles:setDirection(math.atan2(self.dy, self.dx))
+	self.particles:setDirection(math.vecToAng(self.dx, self.dy))
 
 	world.camera:setPos(self.x, self.y)
-	world.camera:update()
 end
 
 function borb:thinkDead()
 end
 
 function borb:drawAlive()
-	love.graphics.push()
-	love.graphics.applyTransform(love.math.newTransform(self.x, self.y, self.a, self.drawRadius/borb.originx, self.drawRadius/borb.originy, borb.originx, borb.originy))
+	local radius = self.bloopEul.x + self.drawRadius
+	love.graphics.push("transform")
+	love.graphics.applyTransform(love.math.newTransform(self.x, self.y, self.a, radius/borb.originx, radius/borb.originy, borb.originx, borb.originy))
 	love.graphics.draw(borb.graphic)
 	if self.jumping then
 		love.graphics.draw(borb.angryeye, 241, 83)
 	end
-	love.graphics.pop()
+	love.graphics.pop("transform")
 
-	self.particles:update(world.dt)
+	self.particles:update(dt)
 	love.graphics.draw(self.particles)
 end
 
@@ -173,7 +173,10 @@ function borb:jump()
 	self.body:setInertia(inertia)
 	self.jumpEnts = {}
 	for i=1, self.jumpNum do
-		local body = world.physworld:newCircleCollider(self.x, self.y, self.jumpRadius)
+		local body = world.physworld:newCollider(self.x, self.y, 0)
+		local fixture = body:addFixture("Main", borb.jumpShape)
+		fixture:setFriction(10)
+		fixture:setRestitution(0.2)
 		body:setMass(mass)
 		body:setInertia(inertia)
 		body:setInertia(0.5)
@@ -181,10 +184,9 @@ function borb:jump()
 		body:setLinearDamping(0)
 		body:setAngularDamping(0)
 		body:setLinearVelocity(self.dx, self.dy)
+		body:setAngularVelocity(self.da)
 		body:setCollisionClass("Player")
 		body:setObject(self)
-		body.fixtures.Main:setFriction(10)
-		body.fixtures.Main:setRestitution(0.2)
 
 		local ang = 2*math.pi*i/self.jumpNum
 		local joint = love.physics.newPrismaticJoint(self.body.body, body.body, self.x, self.y, self.x, self.y, math.cos(ang), math.sin(ang), false)
@@ -229,20 +231,32 @@ function borb:explode(velx, vely)
 	local variance = 20
 	self.floofs = {}
 	for i=1, self.floofNum do
-		local floof = world.physworld:newRectangleCollider(self.x, self.y, self.radius*1.5, self.radius*0.5)
+		local floof = world.physworld:newRectangleCollider(self.x, self.y, math.random()*math.pi*2)
 		floof:setType("dynamic")
-		floof:setAngle(math.random()*math.pi*2)
 		floof:setLinearDamping(1)
 		floof:setAngularDamping(0.1)
 		floof:setLinearVelocity(self.dx + velx + math.random()*variance, self.dy + vely + math.random()*variance)
 		floof:setAngularVelocity((math.random()-0.5)*variance*5)
 		floof:setCollisionClass("Player")
-		floof.fixtures.Main:setFriction(1)
-		floof.fixtures.Main:setRestitution(0.5)
+
+		local fixture = floof:addFixture("Main", borb.floofshape)
+		fixture:setFriction(1)
+		fixture:setRestitution(0.5)
+
 		self.floofs[i] = floof
 	end
 	self.think = self.thinkDead
 	self.draw = self.drawDead
+end
+
+function borb:serialize(buffer)
+	buffer[#buffer+1] = love.data.pack("string", "<ddd", self.x, self.y, self.radius)
+end
+
+function borb.deserialize(buffer, pos)
+	local x, y, radius
+	x, y, radius, pos = love.data.unpack("<ddd", buffer, pos)
+	return borb:new(x, y, radius), pos
 end
 
 end)
@@ -252,15 +266,15 @@ local borb = types.borb
 local featherProjectile = types.featherProjectile
 
 featherProjectile.feather = images["feather.png"]
-featherProjectile.featherOriginX = featherProjectile.feather:getWidth()*0.5
-featherProjectile.featherOriginY = featherProjectile.feather:getWidth()*0.5
+featherProjectile.shape = love.physics.newCircleShape(0.2)
+featherProjectile.featherOriginX = 12
+featherProjectile.featherOriginY = 170
 function featherProjectile:initialize(borb, x, y, dx, dy)
-	baseentity.initialize(self)
+	baseentity.initialize(self, x, y, math.vecToAng(dx, dy))
 	self.borb = borb
 	self.drawCategory = world.drawCategories.foreground
-	self.body = world.physworld:newCircleCollider(x, y, 0.5)
+	self.body = world.physworld:newCollider(x, y, self.a)
 	self.body:setType("dynamic")
-	self.body:setAngle(math.vecToAng(dx, dy))
 	self.body:setLinearVelocity(dx, dy)
 	self.body:setLinearDamping(0)
 	self.body:setAngularDamping(0)
@@ -268,20 +282,21 @@ function featherProjectile:initialize(borb, x, y, dx, dy)
 	self.body:setObject(self)
 	self.body:setCollisionClass("Player")
 	self.body:setPostSolve(function(collider_1, collider_2, contact, normal_impulse1, tangent_impulse1, normal_impulse2, tangent_impulse2)
-		self:postSolve(collider_2:getObject(), contact)
+		self:postSolve(collider_2:getObject(), contact, normal_impulse1, tangent_impulse1, normal_impulse2, tangent_impulse2)
 	end)
+	self.bodies = {self.body}
 
-	local fixture = self.body.fixtures.Main
+	local fixture = self.body:addFixture("Main", featherProjectile.shape)
 	fixture:setFriction(10)
 	fixture:setRestitution(1)
 
 	self.pd = util.newPDController(self.body, 300)
 end
 
-function featherProjectile:postSolve(other, contact)
+function featherProjectile:postSolve(other, contact, normal_impulse1, tangent_impulse1, normal_impulse2, tangent_impulse2)
 	if other and other.onDamage then
 		local x, y = contact:getPositions()
-		local xn, yn = contact:getNormal()
+		local xn, yn = util.contactNormal(self, contact)
 		other:onDamage(x, y, xn, yn)
 	end
 	self:remove()
@@ -297,11 +312,144 @@ end
 
 function featherProjectile:draw()
 	local x, y = self.body:getPosition()
-	love.graphics.draw(self.feather, x, y, self.body:getAngle()+2.3, 0.01, 0.01, self.featherOriginX-50, self.featherOriginY+30)
+	love.graphics.draw(self.feather, x, y, self.body:getAngle()-2.5, 0.01, 0.01, self.featherOriginX, self.featherOriginY)
 end
 
 function featherProjectile:onRemove()
 	self.body:destroy()
+end
+
+end)
+
+addType("bread", "item", function(item)
+local bread = types.bread
+
+bread.graphic = images["bread.png"]
+bread.shape = love.physics.newRectangleShape(1.7, 1.7)
+bread.originx = bread.graphic:getWidth()*0.5
+bread.originy = bread.graphic:getHeight()*0.5
+function bread:initialize(x, y, a)
+	item.initialize(self, x, y, a)
+	self.drawCategory = world.drawCategories.foreground
+	self.body = world.physworld:newCollider(x, y, 0)
+	self.body:setType("dynamic")
+	self.body:setBullet(true)
+	self.body:setObject(self)
+	self.body:setCollisionClass("Item")
+	self.bodies = {self.body}
+
+	local fixture = self.body:addFixture("Main", bread.shape)
+	fixture:setFriction(10)
+
+	self.crumbs = types.crumbs:new()
+	self.crumbs:spawn()
+	self.ncrumbs = 50
+end
+
+function bread:getState()
+	return self.body:getState()
+end
+
+function bread:use(user)
+	self.crumbs.targetent = user
+	local ux, uy = user:getState()
+	local x, y, a, mdx, mdy, mda = self:getState()
+	local rx, ry = ux - x, uy - y
+	local len = math.clamp(math.length(rx, ry), 0.2, 10)
+	local trx, try = math.rotVecCCW(rx, ry)
+	for i=1, 10 do
+		if math.random() > 1-(1-len/10)*0.05 then
+			local tvel = (math.random()-0.5)*10
+			self.crumbs:addCrumb(x, y, math.random()*math.pi*2, mdx+tvel*trx, mdy+tvel*try, mda)
+			self.body:applyAngularImpulse((math.random()-0.5)*50)
+			self.ncrumbs = self.ncrumbs - 1
+			if self.ncrumbs == 0 then
+				self:remove()
+			end
+		end
+	end
+end
+
+function bread:draw()
+	local x, y, a = self:getState()
+	love.graphics.draw(self.graphic, x, y, a, 0.002, 0.002, self.originx, self.originy)
+end
+
+function bread:onRemove()
+	self.body:destroy()
+end
+
+function bread:serialize(buffer)
+	local x, y, a = self:getState()
+	buffer[#buffer+1] = love.data.pack("string", "<ddd", x, y, a)
+end
+
+function bread.deserialize(buffer, pos)
+	local x, y, a
+	x, y, a, pos = love.data.unpack("<ddd", buffer, pos)
+	return bread:new(x, y, a), pos
+end
+end)
+
+addType("crumbs", "baseentity", function(baseentity)
+local crumbs = types.crumbs
+
+crumbs.graphic = images["crumb.png"]
+crumbs.originx = crumbs.graphic:getWidth()*0.5
+crumbs.originy = crumbs.graphic:getHeight()*0.5
+function crumbs:initialize()
+	baseentity.initialize(self)
+	self.drawCategory = world.drawCategories.foreground
+	self.maxcrumbs = 100
+
+	self.crumbs = {}
+	for i=1, self.maxcrumbs do
+		local crumb = {
+			active = false,
+			eul = util.eulerInt3D(0,0,0,0,0,0)
+		}
+		self.crumbs[i] = crumb
+	end
+end
+
+function crumbs:addCrumb(x, y, a, dx, dy, da)
+	for k, v in ipairs(self.crumbs) do
+		if not v.active then
+			v.active = true
+			v.eul.x, v.eul.y, v.eul.a, v.eul.dx, v.eul.dy, v.eul.da = x, y, a, dx, dy, da
+			break
+		end
+	end
+end
+
+function crumbs:crumbThink(crumb, tx, ty, tdx, tdy)
+	local x, y, a, dx, dy, da = crumb.eul.x, crumb.eul.y, crumb.eul.a, crumb.eul.dx, crumb.eul.dy, crumb.eul.da
+	local dirx, diry = tx - x, ty - y
+	local dirlenSqr = math.lengthSqr(dirx, diry)
+	if dirlenSqr < 1 then crumb.active = false self.targetent:bloop(3+math.random()*2) return end
+
+	local dirlen = math.sqrt(dirlenSqr)
+	local veldot = math.max(math.dot(dirx, diry, dx, dy) / dirlen, 0)
+	local tanvelx, tanvely = dx - dirx/dirlen*veldot, dy - diry/dirlen*veldot
+	crumb.eul(dirx*10 - tanvelx*5 + (tdx - dx)*0, diry*10 - tanvely*5 + (tdy - dy)*0, 0)
+end
+
+function crumbs:think()
+	if not self.targetent then return end
+	local tx, ty, ta, tdx, tdy = self.targetent:getState()
+	for k, crumb in ipairs(self.crumbs) do
+		if crumb.active then
+			self:crumbThink(crumb, tx, ty, tdx, tdy)
+		end
+	end
+end
+
+function crumbs:draw()
+	for k, crumb in ipairs(self.crumbs) do
+		if crumb.active then
+			love.graphics.draw(self.graphic, crumb.eul.x, crumb.eul.y, crumb.eul.a, 0.005, 0.005, self.originx, self.originy)
+		end
+	end
 end
 
 end)

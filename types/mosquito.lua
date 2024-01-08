@@ -1,7 +1,6 @@
 addType("mosquito", "baseentity", function(baseentity)
 local mosquito = types.mosquito
 local bloodspray = types.bloodspray
-local animatedSpriteBlurred = types.animatedSpriteBlurred
 
 mosquito.graphic = images["triangle.png"]
 -- mosquito.graphic = images["mosquito.png"]
@@ -19,13 +18,18 @@ mosquito.graphicmap = {
 	{t = 0.8, u1 = 1/3, v1 = 2/3, u2 = 2/3, v2 = 3/3},
 	{t = 0.9, u1 = 3/3, v1 = 2/3, u2 = 3/3, v2 = 3/3},
 }
-mosquito.sprite = animatedSpriteBlurred:new(mosquito.graphic, mosquito.graphicmap)
+
+function mosquito.staticinit()
+	mosquito.sprite = types.animatedSpriteBlurred:new(mosquito.graphic, mosquito.graphicmap)
+	mosquito.shape = love.physics.newCircleShape(1)
+end
+
 function mosquito:initialize(x, y)
-	baseentity.initialize(self)
+	baseentity.initialize(self, x, y, 0)
 	self.drawCategory = world.drawCategories.foreground
-	
+
 	self.targetx, self.targety = x, y
-	self.body = world.physworld:newCircleCollider(x, y, 1)
+	self.body = world.physworld:newCollider(x, y, 0)
 	self.body:setType("dynamic")
 	self.body:setLinearDamping(0)
 	self.body:setAngularDamping(0)
@@ -33,17 +37,17 @@ function mosquito:initialize(x, y)
 	self.body:setObject(self)
 	self.body:setCollisionClass("Enemy")
 	self.body:setGravityScale(0)
-	
+
 	self.body:setPostSolve(function(collider_1, collider_2, contact, normal_impulse1, tangent_impulse1, normal_impulse2, tangent_impulse2)
 		self:postSolve(collider_2:getObject(), contact, normal_impulse1)
 	end)
-	
-	local fixture = self.body.fixtures.Main
+
+	local fixture = self.body:addFixture("Main", mosquito.shape)
 	fixture:setFriction(10)
 	fixture:setRestitution(0.5)
 
 	self.pd = util.newPDController(self.body, 20)
-	
+
 	self.think = mosquito.aliveThink
 	self.draw = mosquito.aliveDraw
 	self.alive = true
@@ -61,7 +65,7 @@ function mosquito:postSolve(other, contact, normal_impulse)
 end
 
 function mosquito:onDamage(x, y, xn, yn)
-	bloodspray:new(x, y, xn*10, yn*10):spawn()
+	bloodspray:new(x, y, xn*30, yn*30):spawn()
 	self.body:setGravityScale(1)
 	self.think = self.deadThink
 	self.draw = self.deadDraw
@@ -92,7 +96,7 @@ function mosquito:chaseThink()
 	local tx, ty = math.rotVecCW(dx, dy)
 	local wave = math.sin(world.t*5)*5
 
-	self.pd(self.targetx - self.x, self.targety - self.y, math.angnorm(math.vecToAng(dx, dy)) - self.a, tx*wave-self.dx, ty*wave-self.dy, -self.da)
+	self.pd(self.targetx - self.x, self.targety - self.y, math.angnorm(math.vecToAng(dx, dy) - self.a), tx*wave-self.dx, ty*wave-self.dy, -self.da)
 end
 
 function mosquito:deadThink()
@@ -108,5 +112,4 @@ function mosquito:deadDraw()
 	-- love.graphics.circle("fill", self.x, self.y, 1)
 	mosquito.sprite:draw(world.t, 0.2, self.x, self.y, self.a, 2, 2)
 end
-
 end)

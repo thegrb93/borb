@@ -1,19 +1,28 @@
 addType("spawn", "baseentity", function(baseentity)
 local spawn = types.spawn
 
-function spawn:initialize(data)
-	baseentity.initialize(self)
-	self.spawnpoint = {x = data.center.x, y = -data.center.y}
+function spawn:initialize(x, y)
+	baseentity.initialize(self, x, y, 0)
 	hook.add("worldloaded", self)
 end
 
-function spawn:destroy()
+function spawn:onRemove()
 	hook.remove("worldloaded", self)
 end
 
 function spawn:worldloaded()
-	world.player = types.borb:new(self.spawnpoint.x, self.spawnpoint.y, 1.5)
+	world.player = types.borb:new(self.x, self.y, 0)
 	world.player:spawn()
+end
+
+function spawn:serialize(buffer)
+	buffer[#buffer+1] = love.data.pack("string", "<dd", self.x, self.y)
+end
+
+function spawn.deserialize(buffer, pos)
+	local x, y
+	x, y, pos = love.data.unpack("<dd", buffer, pos)
+	return spawn:new(x, y), pos
 end
 
 end)
@@ -23,16 +32,104 @@ local spike = types.spike
 
 function spike:initialize(body, data)
 	baseentity.initialize(self)
-	self.drawCategory = world.drawCategories.foreground
+	self.drawCategory = world.drawCategories.worldforeground
 	self.body = body
 	self.body:setObject(self)
 	self.x, self.y = data.center.x, -data.center.y
 end
 
-function spike:draw(data)
+function spike:draw()
 	
 end
+end)
 
+addType("background", "baseentity", function(baseentity)
+local background = types.background
+
+background.img = images["background.png"]
+background.w = background.img:getWidth()*0.5
+background.h = background.img:getHeight()*0.5
+function background:initialize()
+	baseentity.initialize(self)
+	self.drawCategory = world.drawCategories.background
+end
+
+function background:draw()
+	love.graphics.draw(background.img, 0, 0, 0, 0.25, 0.25, background.w, background.h)
+end
+
+end)
+
+addType("prop", "baseentity", function(baseentity)
+local prop = types.prop
+
+prop.properties = {
+	{name = "model"}
+}
+
+function prop:initialize(x, y, a, modelName)
+	baseentity.initialize(self)
+	self.drawCategory = world.drawCategories.foreground
+	self.modelName = modelName
+	self.model = models[modelName]
+	self.model:createBodies(self, x, y, a)
+end
+
+function prop:draw()
+	love.graphics.setColor(1,1,1)
+	self.model:draw(self.bodies[1])
+end
+
+function prop:onRemove()
+	for _, v in ipairs(self.bodies) do
+		v:destroy()
+	end
+end
+
+function prop:getPos()
+	return self.bodies[1]:getPosition()
+end
+
+function prop:serialize(buffer)
+	local x, y, a = self.bodies[1]:getState()
+	buffer[#buffer+1] = love.data.pack("string", "<ddds", x, y, a, self.modelName)
+end
+
+function prop.deserialize(buffer, pos)
+	local x, y, a, modelName
+	x, y, a, modelName, pos = love.data.unpack("<ddds", buffer, pos)
+	return prop:new(x, y, a, modelName), pos
+end
+end)
+
+addType("worldprop", "prop", function(prop)
+local worldprop = types.worldprop
+
+function worldprop:initialize(x, y, a, modelName)
+	prop.initialize(self, x, y, a, modelName)
+	self.drawCategory = world.drawCategories.worldforeground
+	for k, v in ipairs(self.bodies) do
+		v:setCollisionClass("World")
+	end
+end
+
+function worldprop.deserialize(buffer, pos)
+	local x, y, a, modelName
+	x, y, a, modelName, pos = love.data.unpack("<ddds", buffer, pos)
+	return worldprop:new(x, y, a, modelName), pos
+end
+end)
+
+addType("item", "baseentity", function(baseentity)
+local item = types.item
+
+function item:initialize(x, y, a)
+	baseentity.initialize(self, x, y, a)
+	self.drawCategory = world.drawCategories.foreground
+end
+
+function item:use()
+end
 end)
 
 addType("animatedSprite", nil, function()
@@ -71,7 +168,7 @@ end
 
 end)
 
-addType("animatedSpriteBlurred", "animatedSprite", function()
+addType("animatedSpriteBlurred", "animatedSprite", function(animatedSprite)
 local animatedSpriteBlurred = types.animatedSpriteBlurred
 
 function animatedSpriteBlurred:findMeshes(t, tlen)
@@ -125,89 +222,17 @@ end
 
 end)
 
-addType("model", nil, function()
-local model = types.model
+addType("debugpoint", "baseentity", function(baseentity)
+local debugpoint = types.debugpoint
 
-model.store = {}
-function model:initialize(name, x, y)
-	if name then
-		self.data = model.store[name] or model.loadFromFile(name)
-	else
-		self.data = {
-			images = {},
-			meshes = {},
-			shapes = {}
-		}
-	end
+function debugpoint:initialize(x, y, color)
+	baseentity.initialize(self, x, y, 0)
+	self.drawCategory = world.drawCategories.foreground
+	self.color = color
 end
 
-function model.loadFromFile(name)
-	local data = model.deserialize(love.filesystem.read(name))
-	model.store[name] = data
-	return data
+function debugpoint:draw()
+	love.graphics.setColor(self.color)
+	love.graphics.rectangle("fill", self.x-0.03, self.y-0.03, 0.06, 0.06)
 end
-
-function model.saveToFile(name)
-	love.filesystem.write(name, model.serialize(model.store[name]))
-end
-
-function model.serialize(data)
-	local buffer = {}
-	buffer[#buffer+1] = util.serializeArray(data.images, model.serializeImgPath)
-	buffer[#buffer+1] = util.serializeArray(data.meshes, model.serializeMesh)
-	buffer[#buffer+1] = util.serializeArray(data.shapes, model.serializeShape)
-	return table.concat(buffer)
-end
-
-function model.deserialize(buffer)
-	local data = {}
-	local pos = 1
-	data.images, pos = util.deserializeArray(buffer, pos, model.deserializeImgPath)
-	data.meshes, pos = util.deserializeArray(buffer, pos, model.deserializeMesh)
-	data.shapes, pos = util.deserializeArray(buffer, pos, model.deserializeShape)
-	return data
-end
-
-function model.serializeImgPath(img)
-	return love.data.pack("<s", img.filename)
-end
-
-function model.serializeMesh(mesh)
-	local count = mesh:getVertexCount()
-	local buffer = {love.data.pack("<L", count)}
-	for i=1, count do
-		buffer[#buffer+1] = love.data.pack("<dddd", mesh:getVertex(i))
-	end
-	return table.concat(buffer)
-end
-
-function model.serializeShape(shape)
-	local buffer = {}
-	local verts = {shape:getPoints()}
-	buffer[#buffer+1] = love.data.pack("<L"..string.rep("d",#verts), #verts, unpack(verts))
-end
-
-function model.deserializeImgPath(buffer, pos)
-	local path = love.data.unpack("<s", buffer, pos)
-	local tbl = {
-		filename = path,
-		image = images[path]
-	}
-	return tbl, pos+4+#path
-end
-
-function model.deserializeMesh(buffer, pos)
-	local verts
-	pos, verts = util.deserializeArray(buffer, pos, function(buffer, pos)
-		return pos+4*8, {love.data.unpack("<dddd", buffer, pos)}
-	end)
-	return love.graphics.newMesh(verts, "triangles", "static"), pos
-end
-
-function model.deserializeShape(buffer, pos)
-	local count = love.data.unpack("<L", buffer, pos)
-	pos = pos + 4
-	return love.physics.newPolygonShape(love.data.unpack("<"..string.rep("d",count), buffer, pos)), pos+count*8
-end
-
 end)

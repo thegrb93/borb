@@ -1,5 +1,9 @@
 local util = {}
 
+function util.inBox(x, y, bx, by, bw, bh)
+	return x>=bx and y>=by and x<=bx+bw and y<=by+bh
+end
+
 function util.newPDController(body, pgain, dgain)
 	local mass, inertia = body:getMass(), body:getInertia()
 	local dgain = dgain or math.sqrt(pgain)*2
@@ -9,24 +13,54 @@ function util.newPDController(body, pgain, dgain)
 	end
 end
 
-function util.rungeKutta(x, y, a, dx, dy, da)
-	local dt = world.dt
-	return
-		function(x_, y_, a_, dx_, dy_, da_)
-			x, y, a, dx, dy, da = x_, y_, a_, dx_, dy_, da_
-		end,
-		function()
-			return x, y, a, dx, dy, da
-		end,
-		function(fx, fy, fa)
-			dx = dx + fx*dt
-			dy = dy + fy*dt
-			da = da + fa*dt
-			x = x + dx*dt
-			y = y + dy*dt
-			a = a + da*dt
-			return x, y, a, dx, dy, da
-		end
+local dt = dt
+local eulmeta3 = {__call = function(self, fx, fy, fa)
+	self.dx = self.dx + fx*dt
+	self.dy = self.dy + fy*dt
+	self.da = self.da + fa*dt
+	self.x = self.x + self.dx*dt
+	self.y = self.y + self.dy*dt
+	self.a = self.a + self.da*dt
+end,
+__index = {
+	isZero = function(self)
+		return math.abs(self.x)<1e-7 and math.abs(self.y)<1e-7 and math.abs(self.a)<1e-7 and math.abs(self.dx)<1e-7 and math.abs(self.dy)<1e-7 and math.abs(self.da)<1e-7
+	end
+}}
+function util.eulerInt3D(x, y, a, dx, dy, da)
+	return setmetatable({
+		x = x, y = y, a = a, dx = dx, dy = dy, da = da,
+	}, eulmeta3)
+end
+local eulmeta2 = {__call = function(self, fx, fy)
+	self.dx = self.dx + fx*dt
+	self.dy = self.dy + fy*dt
+	self.x = self.x + self.dx*dt
+	self.y = self.y + self.dy*dt
+end,
+__index = {
+	isZero = function(self)
+		return math.abs(self.x)<1e-7 and math.abs(self.y)<1e-7 and math.abs(self.dx)<1e-7 and math.abs(self.dy)<1e-7
+	end
+}}
+function util.eulerInt2D(x, y, dx, dy)
+	return setmetatable({
+		x = x, y = y, dx = dx, dy = dy
+	}, eulmeta2)
+end
+local eulmeta1 = {__call = function(self, fx)
+	self.dx = self.dx + fx*dt
+	self.x = self.x + self.dx*dt
+end,
+__index = {
+	isZero = function(self)
+		return math.abs(self.x)<1e-7 and math.abs(self.dx)<1e-7
+	end
+}}
+function util.eulerInt1D(x, dx)
+	return setmetatable({
+		x = x, dx = dx
+	}, eulmeta1)
 end
 
 function util.binarySearch(xmin, xmax, iter, func)
@@ -45,14 +79,15 @@ function util.binarySearch(xmin, xmax, iter, func)
 end
 
 function util.traceLine(x1, y1, x2, y2, filter)
+	if x1==x2 and y1==y2 then return end
 	if filter==nil then filter = function() return true end end
-	local fixture, x, y, xn, yn, fraction
+	local fixture, x, y, xn, yn
+	local fraction = math.huge
 	world.physworld.box2d_world:rayCast(x1, y1, x2, y2, function(fixture_, x_, y_, xn_, yn_, fraction_)
-		if filter(fixture_) then
+		if filter(fixture_) and fraction_ < fraction then
 			fixture, x, y, xn, yn, fraction = fixture_, x_, y_, xn_, yn_, fraction_
-			return 0
 		end
-		return -1
+		return 1
 	end)
 	return fixture, x, y, xn, yn, fraction
 end
@@ -83,18 +118,21 @@ function util.loadTypes()
 	while next(typesToCreate)~=nil do
 		local created = 0
 		for name, v in pairs(typesToCreate) do
+			if types[name] then error("Multiple type definition: "..name) end
 			if v.basetype then
 				local base = types[v.basetype]
 				if base then
-					types[name] = class(name, base)
+					local t = class(name, base)
+					types[name] = t
 					typesToCreate[name] = nil
-					typesToInit[#typesToInit+1] = {basetype = base, func = v.func}
+					typesToInit[#typesToInit+1] = {type = t, basetype = base, func = v.func}
 					created = created + 1
 				end
 			else
-				types[name] = class(name)
+				local t = class(name)
+				types[name] = t
 				typesToCreate[name] = nil
-				typesToInit[#typesToInit+1] = {func = v.func}
+				typesToInit[#typesToInit+1] = {type = t, func = v.func}
 				created = created + 1
 			end
 		end
@@ -104,31 +142,60 @@ function util.loadTypes()
 		end
 	end
 	for _, v in ipairs(typesToInit) do v.func(v.basetype) end
+	for _, v in ipairs(typesToInit) do if v.type.staticinit then v.type.staticinit() end end
 	function addType(name, basetype, func)
-		types[name] = class(name, basetype and (types[basetype] or error("Couldn't find basetype: "..basetype)))
+		local base = basetype and (types[basetype] or error("Couldn't find basetype: "..basetype))
+		types[name] = class(name, base)
+		func(base)
 	end
 end
 
-function util.serializeArray(tbl, func)
-	local buff = {love.data.pack("<L", #tbl)}
+function util.pcall(func, ...)
+	local ok, err = xpcall(func, debug.traceback, ...)
+	if not ok then print(err) end
+	return ok, err
+end
+
+function commands.reload()
+	love.filesystem.load("lib/util.lua")()
+	util.loadTypes()
+	-- for ent in pairs(world.allEntities) do
+		-- setmetatable(ent, types[getmetatable(ent).name])
+	-- end
+end
+
+function commands.lua(str)
+	loadstring(str)()
+end
+
+function util.serializeArray(buffer, tbl, func)
+	buffer[#buffer+1] = love.data.pack("string", "<L", #tbl)
 	for k, v in ipairs(tbl) do
-		buff[#buff+1] = func(v)
+		func(buffer, v)
 	end
-	return table.concat(buff)
 end
 
-function util.deserializeArray(buff, pos, func)
+function util.deserializeArray(buffer, pos, func)
 	local tbl = {}
-	local size = love.data.unpack("<L", buff, pos)
-	pos = pos + 4
+	local size
+	size, pos = love.data.unpack("<L", buffer, pos)
 	for i=1, size do
-		tbl[i], pos = func(buff, pos)
+		tbl[i], pos = func(buffer, pos)
 	end
 	return tbl, pos
 end
 
+function util.contactNormal(obj, contact)
+	local f1, f2 = contact:getFixtures()
+	f1, f2 = f1:getUserData():getObject(), f2:getUserData():getObject()
+	local nx, ny = contact:getNormal()
+	if obj==f2 then nx = -nx ny = -ny end
+	return nx, ny
+end
+
 function math.normalizeVec(x, y)
 	local l = math.sqrt(x^2+y^2)
+	if l == 0 then return 0, 1 end
 	return x/l, y/l
 end
 
@@ -148,12 +215,24 @@ function math.clamp(x, min, max)
 	return math.max(math.min(x, max), min)
 end
 
+function math.round(x)
+	if x >= 0 then
+		return math.floor(x+0.5)
+	else
+		return math.ceil(x-0.5)
+	end
+end
+
+function math.roundBy(x, interval)
+	return math.round(x / interval)*interval
+end
+
 function math.angnorm(x)
 	return (x + math.pi) % (math.pi*2) - math.pi
 end
 
 function math.vecToAng(x, y)
-	return math.atan2(x, -y)
+	return math.atan2(y, x)
 end
 
 function math.randVecNorm()
@@ -176,6 +255,28 @@ end
 function math.rotVec(x, y, a)
 	local c, s = math.cos(a), math.sin(a)
 	return c*x + s*y, c*y - s*x
+end
+
+function table.removeByValue(t, val)
+	for k, v in ipairs(t) do
+		if v==val then table.remove(t, k) break end
+	end
+end
+
+function string.split(str, match)
+	local tbl = {}
+	local i = 1
+	while true do
+		local start, stop = string.find(str, match, i)
+		if start then
+			tbl[#tbl+1] = string.sub(str, i, start-1)
+			i = stop + 1
+		else
+			break
+		end
+	end
+	tbl[#tbl+1] = string.sub(str, i)
+	return tbl
 end
 
 return util
